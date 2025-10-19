@@ -14,6 +14,7 @@ import QuanLy.Chat.Repository.FriendRepository;
 import QuanLy.Chat.Repository.UserRepository;
 import QuanLy.Chat.Service.ChatRoomService;
 import QuanLy.Chat.Service.FriendService;
+import QuanLy.Chat.Service.NotificationService;
 
 @Service
 public class FriendServiceImpl implements FriendService {
@@ -21,11 +22,13 @@ public class FriendServiceImpl implements FriendService {
     private final FriendRepository friendRepository;
     private final UserRepository userRepository;
     private final ChatRoomService chatRoomService;
+    private final NotificationService notificationService;
 
-    public FriendServiceImpl(FriendRepository friendRepository, UserRepository userRepository, @Lazy ChatRoomService chatRoomService) {
+    public FriendServiceImpl(FriendRepository friendRepository, UserRepository userRepository, @Lazy ChatRoomService chatRoomService, NotificationService notificationService) {
         this.friendRepository = friendRepository;
         this.userRepository = userRepository;
         this.chatRoomService = chatRoomService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -50,6 +53,13 @@ public class FriendServiceImpl implements FriendService {
         // Tạo lời mời pending
         Friend relation = new Friend(user, friend, "pending");
         friendRepository.save(relation);
+
+        // Tạo thông báo cho người được mời
+        try {
+            notificationService.createFriendRequestNotification(friendId, userId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tạo thông báo lời mời kết bạn: " + e.getMessage());
+        }
 
         return new FriendDTO(user.getUserId(), friend.getUserId(), relation.getStatus());
     }
@@ -82,6 +92,13 @@ public class FriendServiceImpl implements FriendService {
 
         // Tạo phòng chat riêng
         createPrivateChatRoom(user, friend);
+
+        // Tạo thông báo cho người gửi lời mời
+        try {
+            notificationService.createFriendAcceptNotification(friendId, userId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tạo thông báo chấp nhận kết bạn: " + e.getMessage());
+        }
 
         return new FriendDTO(user.getUserId(), friend.getUserId(), "accepted");
     }

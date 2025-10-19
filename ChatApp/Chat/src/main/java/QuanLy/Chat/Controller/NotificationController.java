@@ -30,14 +30,30 @@ public class NotificationController {
 	@GetMapping("/user/{userId}")
     public ResponseEntity<List<NotificationDTO>> list(@PathVariable Long userId) {
         List<NotificationDTO> dtos = notificationService.listByUser(userId).stream()
-            .map(n -> new NotificationDTO(n.getNotificationId(), n.getUser().getUserId(), n.getMessage(), n.getRead(), n.getCreatedAt()))
+            .map(n -> new NotificationDTO(n.getNotificationId(), n.getUser().getUserId(), n.getMessage(), n.getRead(), n.getCreatedAt(),
+            		n.getType(), n.getRelatedUserId(), n.getRelatedRoomId(), n.getNavigationData()))
             .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+	}
+
+	@GetMapping("/user/{userId}/unread")
+	public ResponseEntity<List<NotificationDTO>> getUnread(@PathVariable Long userId) {
+		List<NotificationDTO> dtos = notificationService.listUnreadByUser(userId).stream()
+			.map(n -> new NotificationDTO(n.getNotificationId(), n.getUser().getUserId(), n.getMessage(), n.getRead(), n.getCreatedAt(),
+				n.getType(), n.getRelatedUserId(), n.getRelatedRoomId(), n.getNavigationData()))
+			.collect(Collectors.toList());
+		return ResponseEntity.ok(dtos);
 	}
 
 	@PostMapping("/user/{userId}/mark-all-read")
 	public ResponseEntity<Void> markAllRead(@PathVariable Long userId) {
 		notificationService.markAllRead(userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/{notificationId}/mark-read")
+	public ResponseEntity<Void> markRead(@PathVariable Long notificationId) {
+		notificationService.markRead(notificationId);
 		return ResponseEntity.noContent().build();
 	}
 }

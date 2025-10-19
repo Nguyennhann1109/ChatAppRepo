@@ -6,13 +6,16 @@ import { useAuth } from "../../context/AuthContext";
 import FriendList from "../friends/FriendList";
 import AddFriend from "../friends/AddFriend";
 import FriendRequests from "../friends/FriendRequests";
+import NotificationList from "../notifications/NotificationList";
+import { useNotifications } from "../../hooks/useNotifications";
 import { roomApi } from "../../api/roomApi";
 import "./ChatLayout.css";
 
 function ChatLayout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [view, setView] = useState("rooms"); // "rooms" | "friends" | "chat"
+  const [view, setView] = useState("rooms"); // "rooms" | "friends" | "chat" | "notifications"
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
 
@@ -71,6 +74,39 @@ function ChatLayout() {
     }
   };
 
+  // Xử lý chuyển hướng từ thông báo
+  const handleNotificationClick = (navigationData) => {
+    switch (navigationData.type) {
+      case 'FRIEND_REQUEST':
+      case 'FRIEND_ACCEPT':
+        setView('friends');
+        break;
+      case 'MESSAGE_UNREAD':
+        if (navigationData.roomId) {
+          setSelectedRoomId(navigationData.roomId);
+          setView('chat');
+        }
+        break;
+      case 'GROUP_ADD':
+        if (navigationData.roomId) {
+          setSelectedRoomId(navigationData.roomId);
+          setView('chat');
+        }
+        break;
+      case 'GROUP_REMOVE':
+        setView('rooms');
+        break;
+      case 'GROUP_RENAME':
+        if (navigationData.roomId) {
+          setSelectedRoomId(navigationData.roomId);
+          setView('chat');
+        }
+        break;
+      default:
+        console.log('Unknown notification type:', navigationData.type);
+    }
+  };
+
   return (
     <div className="chat-layout">
       {/* Sidebar */}
@@ -103,6 +139,12 @@ function ChatLayout() {
           >
             👥 Bạn bè
           </button>
+          <button
+            className={view === "notifications" ? "active" : ""}
+            onClick={() => setView("notifications")}
+          >
+            🔔 Thông báo {unreadCount > 0 && `(${unreadCount})`}
+          </button>
         </div>
 
         {/* Sidebar content */}
@@ -116,6 +158,9 @@ function ChatLayout() {
               <FriendRequests />
               <FriendList onSelectFriend={handleSelectFriend} />
             </div>
+          )}
+          {view === "notifications" && (
+            <NotificationList onNotificationClick={handleNotificationClick} />
           )}
         </div>
 

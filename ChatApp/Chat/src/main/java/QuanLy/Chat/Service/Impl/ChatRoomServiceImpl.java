@@ -12,6 +12,7 @@ import QuanLy.Chat.Repository.ChatRoomMemberRepository;
 import QuanLy.Chat.Repository.ChatRoomRepository;
 import QuanLy.Chat.Repository.UserRepository;
 import QuanLy.Chat.Service.ChatRoomService;
+import QuanLy.Chat.Service.NotificationService;
 
 @Service
 @Transactional
@@ -20,11 +21,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatRoomMemberRepository chatRoomMemberRepository;
 	private final UserRepository userRepository;
+	private final NotificationService notificationService;
 
-	public ChatRoomServiceImpl(ChatRoomRepository chatRoomRepository, ChatRoomMemberRepository chatRoomMemberRepository, UserRepository userRepository) {
+	public ChatRoomServiceImpl(ChatRoomRepository chatRoomRepository, ChatRoomMemberRepository chatRoomMemberRepository, UserRepository userRepository, NotificationService notificationService) {
 		this.chatRoomRepository = chatRoomRepository;
 		this.chatRoomMemberRepository = chatRoomMemberRepository;
 		this.userRepository = userRepository;
+		this.notificationService = notificationService;
 	}
 
 	@Override
@@ -39,8 +42,26 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Override
 	public ChatRoom updateRoom(Long roomId, String roomName) {
 		ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
-		if (roomName != null && !roomName.isBlank()) {
+		if (roomName != null && !roomName.isBlank() && !roomName.equals(room.getRoomName())) {
+			String oldName = room.getRoomName();
 			room.setRoomName(roomName);
+			ChatRoom updatedRoom = chatRoomRepository.save(room);
+			
+			// Tạo thông báo đổi tên nhóm cho tất cả thành viên (trừ admin)
+			if (room.getIsGroup()) {
+				try {
+					List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom_ChatRoomId(roomId);
+					for (ChatRoomMember member : members) {
+						if (!"admin".equals(member.getRole())) {
+							notificationService.createGroupRenameNotification(member.getUser().getUserId(), roomId, oldName, roomName);
+						}
+					}
+				} catch (Exception e) {
+					System.err.println("Lỗi khi tạo thông báo đổi tên nhóm: " + e.getMessage());
+				}
+			}
+			
+			return updatedRoom;
 		}
 		return chatRoomRepository.save(room);
 	}
@@ -65,7 +86,18 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 		ChatRoomMember member = new ChatRoomMember(room, user, role == null ? "member" : role);
-		return chatRoomMemberRepository.save(member);
+		ChatRoomMember savedMember = chatRoomMemberRepository.save(member);
+		
+		// Tạo thông báo thêm vào nhóm (chỉ cho nhóm, không cho chat riêng)
+		if (room.getIsGroup()) {
+			try {
+				notificationService.createGroupAddNotification(userId, roomId, room.getRoomName());
+			} catch (Exception e) {
+				System.err.println("Lỗi khi tạo thông báo thêm vào nhóm: " + e.getMessage());
+			}
+		}
+		
+		return savedMember;
 	}
 
 	@Override
@@ -74,7 +106,21 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		if (member == null) {
 			throw new RuntimeException("Không tìm thấy thành viên trong phòng");
 		}
+		
+		// Lưu thông tin nhóm trước khi xóa để tạo thông báo
+		ChatRoom room = member.getChatRoom();
+		String roomName = room.getRoomName();
+		
 		chatRoomMemberRepository.delete(member);
+		
+		// Tạo thông báo xóa khỏi nhóm (chỉ cho nhóm, không cho chat riêng)
+		if (room.getIsGroup()) {
+			try {
+				notificationService.createGroupRemoveNotification(userId, roomId, roomName);
+			} catch (Exception e) {
+				System.err.println("Lỗi khi tạo thông báo xóa khỏi nhóm: " + e.getMessage());
+			}
+		}
 	}
 
 	@Override

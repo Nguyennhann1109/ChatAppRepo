@@ -1,0 +1,165 @@
+.notification-list {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  position: relative;
+}
+
+.notification-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.unread-badge {
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.mark-all-read-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mark-all-read-btn:hover {
+  background: #0056b3;
+}
+
+.notification-loading,
+.notification-error,
+.no-notifications {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+.notification-error {
+  color: #dc3545;
+}
+
+.notification-items {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #f8f9fa;
+}
+
+.notification-item.unread {
+  background: #e3f2fd;
+}
+
+.notification-item.unread:hover {
+  background: #bbdefb;
+}
+
+.notification-icon {
+  font-size: 20px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  word-wrap: break-word;
+}
+
+.notification-time {
+  color: #666;
+  font-size: 12px;
+}
+
+.unread-indicator {
+  width: 8px;
+  height: 8px;
+  background: #007bff;
+  border-radius: 50%;
+  margin-left: 8px;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+/* Scrollbar styling */
+.notification-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-items::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.notification-items::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.notification-items::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .notification-list {
+    max-width: 100%;
+  }
+  
+  .notification-header {
+    padding: 12px;
+  }
+  
+  .notification-header h3 {
+    font-size: 16px;
+  }
+  
+  .mark-all-read-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
