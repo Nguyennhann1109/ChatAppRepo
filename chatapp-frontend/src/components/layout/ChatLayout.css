@@ -1,0 +1,271 @@
+/* Tổng thể layout */
+.chat-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+/* === Sidebar === */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  height: 100vh;
+  overflow: hidden; /* ẩn tràn tổng thể */
+}
+
+/* Header */
+.sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #667eea;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.btn-logout {
+  padding: 6px 12px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-logout:hover {
+  background: #d32f2f;
+}
+
+/* Tabs */
+.sidebar-tabs {
+  display: flex;
+  justify-content: space-around;
+  margin: 10px;
+  gap: 8px;
+}
+
+.sidebar-tabs button {
+  flex: 1;
+  background: #f0f0f0;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  color: #333;
+}
+
+.sidebar-tabs button:hover {
+  background: #e0e0e0;
+  transform: scale(1.03);
+}
+
+.sidebar-tabs button.active {
+  background: linear-gradient(135deg, #6b73ff, #000dff);
+  color: white;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Nội dung chính trong sidebar */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 16px;
+
+  /* Ẩn scrollbar nhưng vẫn cuộn được */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE & Edge */
+}
+
+.sidebar-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Footer */
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.btn-settings {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.btn-settings:hover {
+  background: #e0e0e0;
+}
+
+/* === Main content === */
+.main-content {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.empty-chat {
+  margin: auto;
+  text-align: center;
+  font-size: 18px;
+  color: #777;
+}
+
+/* setting*/
+
+/* Popup cài đặt nổi lên khi bấm nút ⚙️ */
+.settings-popup {
+  position: absolute;
+  bottom: 60px; /* nằm trên nút cài đặt */
+  left: 20px;
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  z-index: 999;
+  animation: fadeSlideIn 0.25s ease forwards;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-popup h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 4px;
+}
+
+.settings-popup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-popup li {
+  padding: 8px 6px;
+  font-size: 13px;
+  color: #555;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.settings-popup li:hover {
+  background: #f0f0f0;
+  color: #000;
+}
+
+/* Đảm bảo vùng footer có position để popup định vị */
+.sidebar-footer {
+  position: relative;
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+/* đảm bảo scrollbar biến mất */
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* ẩn scrollbar toàn trang */
+}
+
+.chat-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden; /* tránh tràn ra ngoài */
+}
+
+.sidebar {
+  width: 300px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto; /* chỉ phần danh sách phòng mới cuộn */
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-room-messages {
+  flex: 1;
+  overflow-y: auto; /* chỉ vùng tin nhắn mới cuộn */
+}
+

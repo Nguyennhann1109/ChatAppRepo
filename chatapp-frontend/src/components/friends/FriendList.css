@@ -1,0 +1,38 @@
+.friend-list {
+  padding: 10px;
+}
+
+.friend-item {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.friend-item:hover {
+  background: #f2f2f2;
+}
+
+.friend-avatar {
+  width: 32px;
+  height: 32px;
+  background: #6b5bff;
+  color: white;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.friend-name {
+  font-size: 15px;
+}
+
+.no-friend {
+  color: #aaa;
+  text-align: center;
+}

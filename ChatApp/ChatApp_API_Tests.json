@@ -1,0 +1,751 @@
+{
+  "info": {
+    "name": "ChatApp API Tests - Simplified Version",
+    "description": "Complete API test collection for ChatApp after simplification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "userId1",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId2", 
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser1\",\n  \"password\": \"password123\",\n  \"email\": \"test1@example.com\",\n  \"phoneNumber\": \"0123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('userId1', response.userId);",
+                  "    console.log('User 1 registered with ID:', response.userId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Second User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser2\",\n  \"password\": \"password123\",\n  \"email\": \"test2@example.com\",\n  \"phoneNumber\": \"0987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('userId2', response.userId);",
+                  "    console.log('User 2 registered with ID:', response.userId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser1\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId1}}"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"passwordHash\": \"hashedpassword\",\n  \"email\": \"newuser@example.com\",\n  \"phoneNumber\": \"1111111111\",\n  \"role\": \"USER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"updateduser\",\n  \"email\": \"updated@example.com\",\n  \"phoneNumber\": \"2222222222\",\n  \"avatarUrl\": \"https://example.com/avatar.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId1}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/users/3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "3"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Friend Management",
+      "item": [
+        {
+          "name": "Add Friend Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/add?userId={{userId1}}&friendId={{userId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "add"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId1}}"
+                },
+                {
+                  "key": "friendId",
+                  "value": "{{userId2}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Friend Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/accept?userId={{userId2}}&friendId={{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "accept"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId2}}"
+                },
+                {
+                  "key": "friendId",
+                  "value": "{{userId1}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Friend request accepted - room should be created automatically');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Friends List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/{{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "{{userId1}}"]
+            }
+          }
+        },
+        {
+          "name": "Reject Friend Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/reject?userId={{userId1}}&friendId=999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "reject"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId1}}"
+                },
+                {
+                  "key": "friendId",
+                  "value": "999"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Friend Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/cancel?userId={{userId1}}&friendId=999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "cancel"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId1}}"
+                },
+                {
+                  "key": "friendId",
+                  "value": "999"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Friend",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/friends/delete?userId={{userId1}}&friendId={{userId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "friends", "delete"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId1}}"
+                },
+                {
+                  "key": "friendId",
+                  "value": "{{userId2}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Chat Rooms",
+      "item": [
+        {
+          "name": "Create Chat Room",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms?roomName=Test Room&isGroup=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms"],
+              "query": [
+                {
+                  "key": "roomName",
+                  "value": "Test Room"
+                },
+                {
+                  "key": "isGroup",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('roomId', response.chatRoomId);",
+                  "    console.log('Room created with ID:', response.chatRoomId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Rooms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms"]
+            }
+          }
+        },
+        {
+          "name": "Get Room by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}?roomName=Updated Room Name",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}"],
+              "query": [
+                {
+                  "key": "roomName",
+                  "value": "Updated Room Name"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Member to Room",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/members?userId={{userId1}}&role=admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "members"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId1}}"
+                },
+                {
+                  "key": "role",
+                  "value": "admin"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Second Member",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/members?userId={{userId2}}&role=member",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "members"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId2}}"
+                },
+                {
+                  "key": "role",
+                  "value": "member"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Room Members",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "members"]
+            }
+          }
+        },
+        {
+          "name": "Remove Member from Room",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/members/{{userId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "members", "{{userId2}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Messaging",
+      "item": [
+        {
+          "name": "Send Text Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "Hello, this is a test message!"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages?roomId={{roomId}}&senderId={{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"],
+              "query": [
+                {
+                  "key": "roomId",
+                  "value": "{{roomId}}"
+                },
+                {
+                  "key": "senderId",
+                  "value": "{{userId1}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('messageId', response.messageId);",
+                  "    console.log('Message sent with ID:', response.messageId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Room Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/room/{{roomId}}?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "room", "{{roomId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Edit Message",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "This message has been edited!"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}?editorUserId={{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}"],
+              "query": [
+                {
+                  "key": "editorUserId",
+                  "value": "{{userId1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Message as Delivered",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/room/{{roomId}}/delivered/{{messageId}}?userId={{userId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "room", "{{roomId}}", "delivered", "{{messageId}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId2}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Message as Seen",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/room/{{roomId}}/seen/{{messageId}}?userId={{userId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "room", "{{roomId}}", "seen", "{{messageId}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId2}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Media File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/room/{{roomId}}/media?senderId={{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "room", "{{roomId}}", "media"],
+              "query": [
+                {
+                  "key": "senderId",
+                  "value": "{{userId1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}?requesterUserId={{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}"],
+              "query": [
+                {
+                  "key": "requesterUserId",
+                  "value": "{{userId1}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Notifications",
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/user/{{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "user", "{{userId1}}"]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/user/{{userId1}}/mark-all-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "user", "{{userId1}}", "mark-all-read"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Presence",
+      "item": [
+        {
+          "name": "Check User Online Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/presence/online/{{userId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "presence", "online", "{{userId1}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. WebSocket Tests",
+      "item": [
+        {
+          "name": "WebSocket Connection Test",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ws",
+              "host": ["{{baseUrl}}"],
+              "path": ["ws"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+
