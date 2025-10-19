@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +28,7 @@ public class NotificationController {
 		this.notificationService = notificationService;
 	}
 
-	@GetMapping("/user/{userId}")
+	@GetMapping(value = "/user/{userId}", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
     public ResponseEntity<List<NotificationDTO>> list(@PathVariable Long userId) {
         List<NotificationDTO> dtos = notificationService.listByUser(userId).stream()
             .map(n -> new NotificationDTO(n.getNotificationId(), n.getUser().getUserId(), n.getMessage(), n.getRead(), n.getCreatedAt(),
@@ -36,7 +37,7 @@ public class NotificationController {
         return ResponseEntity.ok(dtos);
 	}
 
-	@GetMapping("/user/{userId}/unread")
+	@GetMapping(value = "/user/{userId}/unread", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
 	public ResponseEntity<List<NotificationDTO>> getUnread(@PathVariable Long userId) {
 		List<NotificationDTO> dtos = notificationService.listUnreadByUser(userId).stream()
 			.map(n -> new NotificationDTO(n.getNotificationId(), n.getUser().getUserId(), n.getMessage(), n.getRead(), n.getCreatedAt(),
@@ -44,6 +45,7 @@ public class NotificationController {
 			.collect(Collectors.toList());
 		return ResponseEntity.ok(dtos);
 	}
+
 
 	@PostMapping("/user/{userId}/mark-all-read")
 	public ResponseEntity<Void> markAllRead(@PathVariable Long userId) {
@@ -54,6 +56,12 @@ public class NotificationController {
 	@PostMapping("/{notificationId}/mark-read")
 	public ResponseEntity<Void> markRead(@PathVariable Long notificationId) {
 		notificationService.markRead(notificationId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/user/{userId}/delete-read")
+	public ResponseEntity<Void> deleteReadNotifications(@PathVariable Long userId) {
+		notificationService.deleteReadNotifications(userId);
 		return ResponseEntity.noContent().build();
 	}
 }

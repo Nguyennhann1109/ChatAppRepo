@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Thêm dòng này
 import { useAuth } from '../../context/AuthContext';
+import oauth2Api from '../../api/oauth2Api';
 import './Login.css';
 
 function Login() {
@@ -23,6 +24,14 @@ function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    window.location.href = oauth2Api.getGoogleLoginUrl();
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = oauth2Api.getFacebookLoginUrl();
   };
 
   return (
@@ -51,6 +60,15 @@ function Login() {
         <button type="submit" disabled={loading}>
           {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
+        
+        <div className="oauth-buttons">
+          <button type="button" onClick={handleGoogleLogin} className="google-btn">
+            Đăng nhập với Google
+          </button>
+          <button type="button" onClick={handleFacebookLogin} className="facebook-btn">
+            Đăng nhập với Facebook
+          </button>
+        </div>
         
         <p>Chưa có tài khoản? <a href="/register">Đăng ký</a></p>
       </form>

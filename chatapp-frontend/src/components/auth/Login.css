@@ -71,3 +71,44 @@
 .login-form a:hover {
   text-decoration: underline;
 }
+
+/* OAuth2 buttons */
+.oauth-buttons {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.google-btn, .facebook-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.google-btn {
+  background: #db4437;
+  color: white;
+}
+
+.google-btn:hover {
+  background: #c23321;
+}
+
+.facebook-btn {
+  background: #4267B2;
+  color: white;
+}
+
+.facebook-btn:hover {
+  background: #365899;
+}

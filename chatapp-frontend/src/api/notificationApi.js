@@ -19,6 +19,11 @@ const notificationApi = {
   // Đánh dấu một thông báo đã đọc
   markAsRead: (notificationId) => {
     return axios.post(`/api/notifications/${notificationId}/mark-read`);
+  },
+
+  // Xóa tất cả thông báo đã đọc
+  deleteReadNotifications: (userId) => {
+    return axios.delete(`/api/notifications/user/${userId}/delete-read`);
   }
 };
 

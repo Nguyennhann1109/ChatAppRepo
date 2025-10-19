@@ -3,7 +3,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import './NotificationList.css';
 
 const NotificationList = ({ onNotificationClick }) => {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteReadNotifications } = useNotifications();
 
   const handleNotificationClick = async (notification) => {
     try {
@@ -31,6 +31,14 @@ const NotificationList = ({ onNotificationClick }) => {
       await markAllAsRead();
     } catch (err) {
       console.error('Lỗi khi đánh dấu tất cả đã đọc:', err);
+    }
+  };
+
+  const handleDeleteReadNotifications = async () => {
+    try {
+      await deleteReadNotifications();
+    } catch (err) {
+      console.error('Lỗi khi xóa thông báo đã đọc:', err);
     }
   };
 
@@ -72,9 +80,9 @@ const NotificationList = ({ onNotificationClick }) => {
     return (
       <div className="notification-list">
         <div className="notification-header">
-          <h3>Thông báo</h3>
+          <h3>Notifications</h3>
         </div>
-        <div className="notification-loading">Đang tải...</div>
+        <div className="notification-loading">Loading...</div>
       </div>
     );
   }
@@ -82,7 +90,7 @@ const NotificationList = ({ onNotificationClick }) => {
   return (
     <div className="notification-list">
       <div className="notification-header">
-        <h3>Thông báo</h3>
+        <h3>Notifications</h3>
         {unreadCount > 0 && (
           <div className="unread-badge">{unreadCount}</div>
         )}
@@ -94,18 +102,26 @@ const NotificationList = ({ onNotificationClick }) => {
             Đánh dấu tất cả đã đọc
           </button>
         )}
+        {notifications.some(n => n.isRead) && (
+          <button 
+            className="delete-read-btn"
+            onClick={handleDeleteReadNotifications}
+          >
+            Xóa thông báo đã đọc
+          </button>
+        )}
       </div>
       
       {notifications.length === 0 ? (
         <div className="no-notifications">
-          <p>Không có thông báo nào</p>
+          <p>No notifications</p>
         </div>
       ) : (
         <div className="notification-items">
           {notifications.map(notification => (
             <div
               key={notification.notificationId}
-              className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+              className={`notification-item ${!notification.isRead ? 'unread' : 'read'}`}
               onClick={() => handleNotificationClick(notification)}
             >
               <div className="notification-icon">

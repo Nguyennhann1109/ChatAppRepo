@@ -14,6 +14,7 @@ export const useNotifications = () => {
     try {
       setLoading(true);
       const response = await notificationApi.getAllNotifications(user.userId);
+      
       setNotifications(response.data);
       
       // Đếm số thông báo chưa đọc
@@ -54,6 +55,18 @@ export const useNotifications = () => {
     }
   }, [user?.userId]);
 
+  const deleteReadNotifications = useCallback(async () => {
+    if (!user?.userId) return;
+
+    try {
+      await notificationApi.deleteReadNotifications(user.userId);
+      setNotifications(prev => prev.filter(n => !n.isRead));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Lỗi khi xóa thông báo đã đọc:', error);
+    }
+  }, [user?.userId]);
+
   const addNotification = useCallback((notification) => {
     setNotifications(prev => [notification, ...prev]);
     if (!notification.isRead) {
@@ -73,6 +86,7 @@ export const useNotifications = () => {
     loadNotifications,
     markAsRead,
     markAllAsRead,
+    deleteReadNotifications,
     addNotification
   };
 };

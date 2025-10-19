@@ -94,10 +94,16 @@ public class NotificationServiceImpl implements NotificationService {
 	}
 
 	@Override
+	public void deleteReadNotifications(Long userId) {
+		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		notificationRepository.deleteByUserAndIsReadTrue(user);
+	}
+
+	@Override
 	public Notification createFriendRequestNotification(Long userId, Long senderId) {
 		try {
 			User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));
-			String message = sender.getUsername() + " đã gửi lời mời kết bạn";
+			String message = sender.getUsername() + " sent you a friend request";
 			
 			Map<String, Object> navigationData = new HashMap<>();
 			navigationData.put("type", "FRIEND_REQUEST");
@@ -116,7 +122,7 @@ public class NotificationServiceImpl implements NotificationService {
 	public Notification createFriendAcceptNotification(Long userId, Long friendId) {
 		try {
 			User friend = userRepository.findById(friendId).orElseThrow(() -> new RuntimeException("Không tìm thấy bạn bè"));
-			String message = friend.getUsername() + " đã chấp nhận lời mời kết bạn";
+			String message = friend.getUsername() + " accepted your friend request";
 			
 			Map<String, Object> navigationData = new HashMap<>();
 			navigationData.put("type", "FRIEND_ACCEPT");
@@ -134,7 +140,7 @@ public class NotificationServiceImpl implements NotificationService {
 	@Override
 	public Notification createUnreadMessageNotification(Long userId, Long roomId, String senderName) {
 		try {
-			String message = "Bạn có tin nhắn mới từ " + senderName;
+			String message = "You have a new message from " + senderName;
 			
 			Map<String, Object> navigationData = new HashMap<>();
 			navigationData.put("type", "MESSAGE_UNREAD");

@@ -9,7 +9,7 @@ import FriendRequests from "../friends/FriendRequests";
 import NotificationList from "../notifications/NotificationList";
 import { useNotifications } from "../../hooks/useNotifications";
 import { roomApi } from "../../api/roomApi";
-import "./ChatLayout.css";
+import DetailsPanel from "../layout/DetailsPanel";
 
 function ChatLayout() {
   const { user, logout } = useAuth();
@@ -108,93 +108,73 @@ function ChatLayout() {
   };
 
   return (
-    <div className="chat-layout">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        {/* Header */}
-        <div className="sidebar-header">
-          <div className="user-info">
-            <div className="user-avatar">
-              {(user.username || user.email || "U")[0].toUpperCase()}
+    <div className="min-h-screen h-screen w-full bg-gray-50 flex">
+      {/* Left sidebar */}
+      <aside className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-500 text-white font-semibold flex items-center justify-center">{(user.username || user.email || 'U')[0].toUpperCase()}</div>
+            <div>
+              <div className="text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</div>
+              <div className="text-xs text-gray-500">Online</div>
             </div>
-            <div className="user-name">{user.username || user.email || "User"}</div>
           </div>
-
-          <button className="btn-logout" onClick={handleLogout}>
-            Đăng xuất
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setView('notifications')} className="text-gray-600 hover:text-gray-800">🔔 {unreadCount > 0 && <span className="ml-1 text-xs text-red-600">{unreadCount}</span>}</button>
+            <button onClick={handleLogout} className="text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">Đăng xuất</button>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="sidebar-tabs">
-          <button
-            className={view === "rooms" ? "active" : ""}
-            onClick={() => setView("rooms")}
-          >
-            💬 Phòng chat
-          </button>
-          <button
-            className={view === "friends" ? "active" : ""}
-            onClick={() => setView("friends")}
-          >
-            👥 Bạn bè
-          </button>
-          <button
-            className={view === "notifications" ? "active" : ""}
-            onClick={() => setView("notifications")}
-          >
-            🔔 Thông báo {unreadCount > 0 && `(${unreadCount})`}
-          </button>
+        <div className="px-3 py-2 flex gap-2">
+          <button onClick={() => setView('rooms')} className={`flex-1 py-2 text-sm font-medium rounded ${view === 'rooms' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>💬 Phòng</button>
+          <button onClick={() => setView('friends')} className={`flex-1 py-2 text-sm font-medium rounded ${view === 'friends' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>👥 Bạn</button>
         </div>
 
-        {/* Sidebar content */}
-        <div className="sidebar-content">
-          {view === "rooms" && (
-            <RoomList onSelectRoom={setSelectedRoomId} selectedRoomId={selectedRoomId} />
-          )}
-          {view === "friends" && (
-            <div className="friends-section">
+        <div className="flex-1 overflow-y-auto px-2 py-3">
+          {view === 'rooms' && <RoomList onSelectRoom={setSelectedRoomId} selectedRoomId={selectedRoomId} />}
+          {view === 'friends' && (
+            <div className="space-y-3">
               <AddFriend />
               <FriendRequests />
               <FriendList onSelectFriend={handleSelectFriend} />
             </div>
           )}
-          {view === "notifications" && (
-            <NotificationList onNotificationClick={handleNotificationClick} />
-          )}
+          {view === 'notifications' && <NotificationList onNotificationClick={handleNotificationClick} />}
         </div>
 
-        {/* Footer */}
-        <div className="sidebar-footer">
-          <button
-            className="btn-settings"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            ⚙️
-          </button>
-
+        <div className="px-3 py-2 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">Cài đặt</div>
+            <button onClick={() => setShowSettings(!showSettings)} className="text-gray-600">⚙️</button>
+          </div>
           {showSettings && (
-  <div className="settings-popup" ref={settingsRef}>
-    <h4>⚙️ Cài đặt</h4>
-    <ul>
-      <li>Chỉnh sửa hồ sơ</li>
-      <li>Thông báo</li>
-      <li>Chế độ tối</li>
-      <li>Bảo mật</li>
-    </ul>
-  </div>
-)}
+            <div ref={settingsRef} className="mt-2 bg-white border rounded shadow-sm p-3 text-sm">
+              <ul className="space-y-1">
+                <li className="hover:bg-gray-50 p-1 rounded">Chỉnh sửa hồ sơ</li>
+                <li className="hover:bg-gray-50 p-1 rounded">Thông báo</li>
+                <li className="hover:bg-gray-50 p-1 rounded">Chế độ tối</li>
+                <li className="hover:bg-gray-50 p-1 rounded">Bảo mật</li>
+              </ul>
+            </div>
+          )}
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="main-content">
-        {selectedRoomId ? (
-          <ChatRoom roomId={selectedRoomId} key={selectedRoomId} />
-        ) : (
-          <div className="empty-chat">💬 ChatApp xin chào!</div>
-        )}
+      {/* Center chat */}
+      <main className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {selectedRoomId ? (
+            <ChatRoom roomId={selectedRoomId} key={selectedRoomId} />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500">💬 Chọn phòng hoặc bạn để bắt đầu hội thoại</div>
+          )}
+        </div>
       </main>
+
+      {/* Right details panel */}
+      <aside className="w-80 bg-white border-l border-gray-200 hidden xl:block">
+        <DetailsPanel roomId={selectedRoomId} />
+      </aside>
     </div>
   );
 }

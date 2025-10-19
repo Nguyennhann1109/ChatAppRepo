@@ -13,6 +13,7 @@ public interface NotificationService {
 	void markAllRead(Long userId);
 	void markRead(Long notificationId);
 	void clearAll(Long userId);
+	void deleteReadNotifications(Long userId);
 	
 	// Các phương thức tạo thông báo cụ thể
 	Notification createFriendRequestNotification(Long userId, Long senderId);

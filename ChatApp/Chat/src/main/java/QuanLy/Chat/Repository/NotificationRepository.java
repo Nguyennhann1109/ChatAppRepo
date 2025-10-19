@@ -19,4 +19,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     // Đánh dấu tất cả thông báo của user thành đã đọc
     void deleteByUser(User user); // (hoặc viết custom @Query update)
+    
+    // Xóa các thông báo đã đọc của user
+    void deleteByUserAndIsReadTrue(User user);
 }

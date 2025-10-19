@@ -20,11 +20,20 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, length = 255)
+    @Column(length = 255)
     private String passwordHash;
 
     @Column(unique = true, length = 100)
     private String email;
+    
+    @Column(length = 100)
+    private String displayName;
+    
+    @Column(length = 50)
+    private String externalId; // ID từ Google/Facebook
+    
+    @Column(length = 20)
+    private String provider; // google, facebook
 
     @Column(unique = true, length = 15)
     private String phoneNumber;

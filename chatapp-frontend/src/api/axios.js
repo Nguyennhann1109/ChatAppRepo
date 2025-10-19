@@ -7,9 +7,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
+    'Accept': 'application/json; charset=utf-8',
   },
   withCredentials: true, // ⭐ QUAN TRỌNG: Gửi cookie/session cùng request
+  responseType: 'json',
+  responseEncoding: 'utf8',
 });
 
 // Interceptor: Xử lý lỗi 401 (chưa đăng nhập)
