@@ -11,15 +11,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "notifications")
-@Getter
-@Setter
-@NoArgsConstructor
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,27 +30,55 @@ public class Notification {
 
     private LocalDateTime createdAt;
 
-    // Thêm các trường mới cho thông báo
     @Column(name = "notification_type")
-    private String type; // FRIEND_REQUEST, FRIEND_ACCEPT, MESSAGE_UNREAD, GROUP_ADD, GROUP_REMOVE, GROUP_RENAME
+    private String type;
 
     @Column(name = "related_user_id")
-    private Long relatedUserId; // ID của user liên quan (người gửi lời mời, etc.)
+    private Long relatedUserId;
 
     @Column(name = "related_room_id")
-    private Long relatedRoomId; // ID của room liên quan (cho thông báo nhóm)
+    private Long relatedRoomId;
 
     @Column(name = "navigation_data")
-    private String navigationData; // JSON string chứa thông tin chuyển hướng
+    private String navigationData;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+    public Notification() {}
 
     public Notification(User user, String message) {
         this.user = user;
         this.message = message;
+    }
+
+    public Long getNotificationId() { return notificationId; }
+    public void setNotificationId(Long notificationId) { this.notificationId = notificationId; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+
+    public Boolean getIsRead() { return isRead; }
+    public void setIsRead(Boolean isRead) { this.isRead = isRead; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public Long getRelatedUserId() { return relatedUserId; }
+    public void setRelatedUserId(Long relatedUserId) { this.relatedUserId = relatedUserId; }
+
+    public Long getRelatedRoomId() { return relatedRoomId; }
+    public void setRelatedRoomId(Long relatedRoomId) { this.relatedRoomId = relatedRoomId; }
+
+    public String getNavigationData() { return navigationData; }
+    public void setNavigationData(String navigationData) { this.navigationData = navigationData; }
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 
     public Notification(User user, String message, String type) {

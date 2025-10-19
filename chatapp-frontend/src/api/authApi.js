@@ -16,7 +16,12 @@ export const authApi = {
 
   // API đăng xuất
   logout: async () => {
-    await axiosInstance.post('/api/auth/logout');
+    try {
+      await axiosInstance.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Lỗi logout API:', error);
+      // Vẫn clear localStorage dù API fail
+    }
     localStorage.clear(); // Xóa toàn bộ localStorage
   },
 

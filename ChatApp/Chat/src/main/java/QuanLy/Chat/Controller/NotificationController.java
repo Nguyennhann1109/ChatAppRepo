@@ -3,7 +3,6 @@ package QuanLy.Chat.Controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,10 +10,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+
 import org.springframework.web.bind.annotation.RestController;
 
-import QuanLy.Chat.Entity.Notification;
 import QuanLy.Chat.DTO.NotificationDTO;
 import QuanLy.Chat.Service.NotificationService;
 
@@ -62,6 +60,18 @@ public class NotificationController {
 	@DeleteMapping("/user/{userId}/delete-read")
 	public ResponseEntity<Void> deleteReadNotifications(@PathVariable Long userId) {
 		notificationService.deleteReadNotifications(userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/user/{userId}/clear-all")
+	public ResponseEntity<Void> clearAll(@PathVariable Long userId) {
+		notificationService.clearAll(userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/{notificationId}")
+	public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId) {
+		notificationService.deleteNotification(notificationId);
 		return ResponseEntity.noContent().build();
 	}
 }

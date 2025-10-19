@@ -10,6 +10,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api': {
+        target: 'http://localhost:8080', // ⚙️ Backend Spring Boot đang chạy
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'http://localhost:8080', // ⚙️ Backend Spring Boot đang chạy
         changeOrigin: true,
@@ -17,5 +21,21 @@ export default defineConfig({
       },
     },
   },
+  // Optimize build performance
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['flowbite-react', 'react-icons'],
+          utils: ['axios', 'react-hot-toast']
+        }
+      }
+    }
+  },
+  // Optimize dev server
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'flowbite-react', 'react-icons']
+  }
 })
 

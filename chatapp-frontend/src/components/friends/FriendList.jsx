@@ -1,27 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import friendApi from '../../api/friendApi';
-import { 
-  HiUserAdd, 
-  HiCheck, 
-  HiX, 
-  HiUserRemove,
-  HiSearch,
-  HiUser,
-  HiUserGroup
-} from 'react-icons/hi';
-import { Button, Avatar, Badge, Modal, TextInput, Alert } from 'flowbite-react';
+import { Avatar, Button, Modal, TextInput } from 'flowbite-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import {
+    HiCheck,
+    HiSearch,
+    HiUser,
+    HiUserAdd,
+    HiUserGroup,
+    HiUserRemove,
+    HiX
+} from 'react-icons/hi';
+import friendApi from '../../api/friendApi';
+import { roomApi } from '../../api/roomApi';
+import { useAuth } from '../../context/AuthContext';
 
 const ModernFriendList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
-  const [newFriendUsername, setNewFriendUsername] = useState('');
+  const friendInputRef = useRef(null);
   const [addingFriend, setAddingFriend] = useState(false);
+  const [searchingUser, setSearchingUser] = useState(false);
+  // server-side search result when local friends don't match
+  const [userSearchResult, setUserSearchResult] = useState(null);
+  const [userSearchLoading, setUserSearchLoading] = useState(false);
 
   useEffect(() => {
     if (user?.userId) {
@@ -31,12 +38,13 @@ const ModernFriendList = () => {
 
   const loadFriendsData = async () => {
     try {
+      // keep loading flag for the list areas only so the page chrome renders immediately
       setLoading(true);
       const [friendsResponse, pendingResponse] = await Promise.all([
         friendApi.getFriends(user.userId),
         friendApi.getRequests(user.userId)
       ]);
-      
+
       setFriends(friendsResponse.data || []);
       setPendingRequests(pendingResponse.data || []);
     } catch (error) {
@@ -48,23 +56,57 @@ const ModernFriendList = () => {
   };
 
   const handleAddFriend = async () => {
-    if (!newFriendUsername.trim()) {
+    const username = friendInputRef.current?.value?.trim() || '';
+    if (!username) {
       toast.error('Vui lòng nhập tên đăng nhập');
       return;
     }
 
     setAddingFriend(true);
+    setSearchingUser(true);
     try {
-      await friendApi.sendRequest(user.userId, newFriendUsername);
+      // Tìm kiếm user theo username trước
+      const searchResponse = await friendApi.searchUser(username);
+      const foundUser = searchResponse.data;
+
+      if (!foundUser || !foundUser.userId) {
+        toast.error('Không tìm thấy người dùng với tên đăng nhập này');
+        setAddingFriend(false);
+        setSearchingUser(false);
+        return;
+      }
+
+      // Kiểm tra không tự kết bạn với chính mình
+      if (foundUser.userId === user.userId) {
+        toast.error('Không thể kết bạn với chính mình');
+        setAddingFriend(false);
+        setSearchingUser(false);
+        return;
+      }
+
+      // Gửi lời mời kết bạn với userId tìm được
+      await friendApi.sendRequest(user.userId, foundUser.userId);
       toast.success('Đã gửi lời mời kết bạn');
-      setNewFriendUsername('');
+      if (friendInputRef.current) friendInputRef.current.value = '';
       setShowAddFriendModal(false);
       loadFriendsData();
     } catch (error) {
       console.error('Lỗi gửi lời mời:', error);
-      toast.error(error.response?.data || 'Không thể gửi lời mời kết bạn');
+      console.error('Error details:', error.response);
+      if (error.response?.status === 404) {
+        toast.error('Không tìm thấy người dùng với tên đăng nhập này');
+      } else if (error.response?.data) {
+        // Nếu BE trả về message string
+        const errorMsg = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : error.response.data.message || 'Không thể gửi lời mời kết bạn';
+        toast.error(errorMsg);
+      } else {
+        toast.error('Không thể gửi lời mời kết bạn. Vui lòng thử lại.');
+      }
     } finally {
       setAddingFriend(false);
+      setSearchingUser(false);
     }
   };
 
@@ -75,7 +117,8 @@ const ModernFriendList = () => {
       loadFriendsData();
     } catch (error) {
       console.error('Lỗi chấp nhận lời mời:', error);
-      toast.error('Không thể chấp nhận lời mời');
+      const msg = error.response?.data || error.message || 'Không thể chấp nhận lời mời';
+      toast.error(msg);
     }
   };
 
@@ -86,7 +129,8 @@ const ModernFriendList = () => {
       loadFriendsData();
     } catch (error) {
       console.error('Lỗi từ chối lời mời:', error);
-      toast.error('Không thể từ chối lời mời');
+      const msg = error.response?.data || error.message || 'Không thể từ chối lời mời';
+      toast.error(msg);
     }
   };
 
@@ -103,20 +147,71 @@ const ModernFriendList = () => {
     }
   };
 
-  const filteredFriends = friends.filter(friend =>
-    friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleStartChat = async (friend) => {
+    try {
+      // Lấy tất cả phòng của user
+      const rooms = await roomApi.getUserRooms(user.userId);
+      
+      // Tìm phòng chat riêng tư với bạn này
+      const existingRoom = rooms.find(room =>
+        !room.isGroup && room.otherUserId === friend.friendId
+      );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Đang tải danh sách bạn bè...</p>
-        </div>
-      </div>
+      if (existingRoom) {
+        // Chuyển sang trang chat và mở phòng
+        navigate(`/chat?roomId=${existingRoom.chatRoomId}`);
+      } else {
+        // Nếu chưa có phòng (lý thuyết không xảy ra vì accept friend đã tạo phòng)
+        toast.error('Chưa có phòng chat với bạn này. Vui lòng thử lại sau.');
+      }
+    } catch (error) {
+      console.error('Lỗi khi mở phòng chat:', error);
+      toast.error('Không thể mở phòng chat');
+    }
+  };
+
+
+  // Tối ưu performance với useMemo
+  const filteredFriends = useMemo(() => {
+    if (!searchTerm.trim()) return friends;
+    return friends.filter(friend =>
+      friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }
+  }, [friends, searchTerm]);
+
+  // Debounced server search when local friends don't match
+  useEffect(() => {
+    let t;
+    const q = searchTerm.trim();
+    if (!q || filteredFriends.some(f => f.username?.toLowerCase().includes(q.toLowerCase()))) {
+      setUserSearchResult(null);
+      setUserSearchLoading(false);
+      return;
+    }
+
+    if (q.length < 2) {
+      setUserSearchResult(null);
+      setUserSearchLoading(false);
+      return;
+    }
+
+    setUserSearchLoading(true);
+    t = setTimeout(async () => {
+      try {
+        const res = await friendApi.searchUser(q);
+        setUserSearchResult(res.data || null);
+      } catch (err) {
+        setUserSearchResult(null);
+      } finally {
+        setUserSearchLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(t);
+  }, [searchTerm, filteredFriends]);
+
+  // Render page chrome immediately to improve perceived load time.
+  // Lists will show local spinners while `loading` is true.
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-dark-800">
@@ -153,55 +248,96 @@ const ModernFriendList = () => {
         </div>
       </div>
 
-      {/* Pending Requests */}
-      {pendingRequests.length > 0 && (
-        <div className="p-6 border-b border-gray-200 dark:border-dark-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Lời mời kết bạn ({pendingRequests.length})
-          </h3>
-          <div className="space-y-3">
-            {pendingRequests.map((request) => (
-              <div
-                key={request.friendId}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-700 rounded-xl"
-              >
-                <div className="flex items-center space-x-3">
-                  <Avatar
-                    img={request.avatarUrl}
-                    alt={request.username}
-                    size="md"
-                    rounded
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {request.username}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Muốn kết bạn với bạn
-                    </p>
+  {/* Pending Requests (consolidated below) */}
+        {loading ? (
+          <div className="p-6 border-b border-gray-200 dark:border-dark-700 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Đang tải lời mời...</p>
+            </div>
+          </div>
+        ) : pendingRequests.length > 0 ? (
+          <div className="p-6 border-b border-gray-200 dark:border-dark-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Lời mời kết bạn ({pendingRequests.length})
+            </h3>
+            <div className="space-y-3">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request.userId}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-700 rounded-xl"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Avatar
+                      img={request.avatarUrl}
+                      alt={request.username}
+                      size="md"
+                      rounded
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {request.displayName || request.username || 'Unknown'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Muốn kết bạn với bạn
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      size="sm"
+                      color="success"
+                      onClick={() => handleAcceptRequest(request.userId)}
+                    >
+                      <HiCheck className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="failure"
+                      onClick={() => handleRejectRequest(request.userId)}
+                    >
+                      <HiX className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    color="success"
-                    onClick={() => handleAcceptRequest(request.friendId)}
-                  >
-                    <HiCheck className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    color="failure"
-                    onClick={() => handleRejectRequest(request.friendId)}
-                  >
-                    <HiX className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+      {/* Server-side search result (when top search doesn't match local friends) */}
+      {userSearchLoading ? (
+        <div className="p-6 border-b border-gray-200 dark:border-dark-700 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-1"></div>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Tìm người dùng...</p>
           </div>
         </div>
-      )}
+      ) : userSearchResult ? (
+        <div className="p-6 border-b border-gray-200 dark:border-dark-700">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-700 rounded-xl">
+            <div className="flex items-center space-x-3">
+              <Avatar img={userSearchResult.avatarUrl} alt={userSearchResult.username} size="md" rounded />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">{userSearchResult.username}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Người dùng</p>
+              </div>
+            </div>
+            <div>
+              <Button size="sm" color="primary" onClick={async () => {
+                try {
+                  await friendApi.sendRequest(user.userId, userSearchResult.userId);
+                  toast.success('Đã gửi lời mời kết bạn');
+                  loadFriendsData();
+                } catch (err) {
+                  console.error(err);
+                  toast.error('Không thể gửi lời mời');
+                }
+              }}>Thêm bạn</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Friends List */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -213,21 +349,12 @@ const ModernFriendList = () => {
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               {searchTerm ? 'Không tìm thấy bạn bè' : 'Chưa có bạn bè'}
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {searchTerm 
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm
                 ? 'Thử tìm kiếm với từ khóa khác'
                 : 'Hãy thêm bạn bè để bắt đầu trò chuyện'
               }
             </p>
-            {!searchTerm && (
-              <Button
-                color="primary"
-                onClick={() => setShowAddFriendModal(true)}
-              >
-                <HiUserAdd className="w-4 h-4 mr-2" />
-                Thêm bạn bè
-              </Button>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -246,14 +373,11 @@ const ModernFriendList = () => {
                     />
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {friend.username}
+                        {friend.displayName || friend.username || 'Unknown'}
                       </p>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          Đang hoạt động
-                        </span>
-                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        @{friend.username || 'unknown'}
+                      </p>
                     </div>
                   </div>
                   <Button
@@ -270,6 +394,7 @@ const ModernFriendList = () => {
                     size="sm"
                     color="primary"
                     className="flex-1"
+                    onClick={() => handleStartChat(friend)}
                   >
                     <HiUser className="w-4 h-4 mr-1" />
                     Chat
@@ -282,19 +407,22 @@ const ModernFriendList = () => {
       </div>
 
       {/* Add Friend Modal */}
-      <Modal show={showAddFriendModal} onClose={() => setShowAddFriendModal(false)}>
+      <Modal show={showAddFriendModal} onClose={() => {
+        setShowAddFriendModal(false);
+        if (friendInputRef.current) friendInputRef.current.value = '';
+      }}>
         <Modal.Header>Thêm bạn bè</Modal.Header>
         <Modal.Body>
           <div className="space-y-4">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tên đăng nhập
               </label>
-              <TextInput
+              <input
                 type="text"
                 placeholder="Nhập tên đăng nhập của bạn"
-                value={newFriendUsername}
-                onChange={(e) => setNewFriendUsername(e.target.value)}
+                ref={friendInputRef}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-dark-700 dark:text-white"
               />
             </div>
           </div>
@@ -303,9 +431,9 @@ const ModernFriendList = () => {
           <Button
             color="primary"
             onClick={handleAddFriend}
-            disabled={addingFriend}
+            disabled={addingFriend || searchingUser}
           >
-            {addingFriend ? 'Đang gửi...' : 'Gửi lời mời'}
+            {searchingUser ? 'Đang tìm kiếm...' : addingFriend ? 'Đang gửi...' : 'Gửi lời mời'}
           </Button>
           <Button
             color="gray"

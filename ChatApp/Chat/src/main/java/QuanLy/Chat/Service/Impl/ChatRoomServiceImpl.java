@@ -147,6 +147,43 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		}
 		return false;
 	}
+
+	@Override
+	public List<ChatRoom> getUserRooms(Long userId) {
+		// Lấy tất cả phòng mà user tham gia
+		List<ChatRoomMember> members = chatRoomMemberRepository.findByUser_UserId(userId);
+		// Loại bỏ phòng trùng bằng cách group by chatRoomId
+		return members.stream()
+				.map(ChatRoomMember::getChatRoom)
+				.collect(java.util.stream.Collectors.toMap(
+					ChatRoom::getChatRoomId,
+					room -> room,
+					(existing, replacement) -> existing // Giữ phòng đầu tiên nếu trùng
+				))
+				.values()
+				.stream()
+				.toList();
+	}
+
+	@Override
+	public ChatRoom getPrivateRoomBetweenUsers(Long userId1, Long userId2) {
+		// Tìm tất cả room mà cả 2 user đều là member
+		List<ChatRoomMember> user1Rooms = chatRoomMemberRepository.findByUser_UserId(userId1);
+		List<ChatRoomMember> user2Rooms = chatRoomMemberRepository.findByUser_UserId(userId2);
+		
+		// Kiểm tra xem có room nào mà cả 2 user đều tham gia và không phải group
+		for (ChatRoomMember member1 : user1Rooms) {
+			ChatRoom room = member1.getChatRoom();
+			if (!room.getIsGroup()) { // Chỉ kiểm tra room riêng tư
+				for (ChatRoomMember member2 : user2Rooms) {
+					if (member2.getChatRoom().getChatRoomId().equals(room.getChatRoomId())) {
+						return room; // Tìm thấy room riêng tư giữa 2 user
+					}
+				}
+			}
+		}
+		return null; // Không tìm thấy
+	}
 }
 
 

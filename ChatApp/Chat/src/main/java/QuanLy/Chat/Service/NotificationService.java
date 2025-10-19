@@ -14,6 +14,7 @@ public interface NotificationService {
 	void markRead(Long notificationId);
 	void clearAll(Long userId);
 	void deleteReadNotifications(Long userId);
+	void deleteFriendRequestNotification(Long userId, Long senderId);
 	
 	// Các phương thức tạo thông báo cụ thể
 	Notification createFriendRequestNotification(Long userId, Long senderId);
@@ -22,6 +23,7 @@ public interface NotificationService {
 	Notification createGroupAddNotification(Long userId, Long roomId, String groupName);
 	Notification createGroupRemoveNotification(Long userId, Long roomId, String groupName);
 	Notification createGroupRenameNotification(Long userId, Long roomId, String oldName, String newName);
+	void deleteNotification(Long notificationId);
 }
 
 

@@ -105,6 +105,19 @@ public class NotificationServiceImpl implements NotificationService {
 	}
 
 	@Override
+	public void deleteFriendRequestNotification(Long userId, Long senderId) {
+		User user = findUserById(userId);
+		notificationRepository.findByUser(user).stream()
+			.filter(n -> "FRIEND_REQUEST".equals(n.getType()) && senderId.equals(n.getRelatedUserId()))
+			.forEach(notificationRepository::delete);
+	}
+
+	@Override
+	public void deleteNotification(Long notificationId) {
+		notificationRepository.deleteById(notificationId);
+	}
+
+	@Override
 	public Notification createFriendRequestNotification(Long userId, Long senderId) {
 		try {
 			User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));

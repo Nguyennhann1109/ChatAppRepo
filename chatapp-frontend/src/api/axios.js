@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Lấy URL từ file .env
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Sử dụng relative URL để proxy hoạt động
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // Tạo instance axios với cấu hình mặc định
 const axiosInstance = axios.create({

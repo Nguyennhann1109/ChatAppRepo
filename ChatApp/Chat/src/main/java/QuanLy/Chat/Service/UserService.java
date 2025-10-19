@@ -8,6 +8,7 @@ import QuanLy.Chat.Entity.User;
 public interface UserService {
     List<User> getAllUsers();
     Optional<User> getUserById(Long id);
+    Optional<User> getUserByUsername(String username);
     User saveUser(User user);            // create
     User updateUser(Long id, User user); // update
     void deleteUser(Long id);

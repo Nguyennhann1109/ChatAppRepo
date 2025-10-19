@@ -41,6 +41,30 @@ public class MessageController {
         this.fileStorageService = fileStorageService;
 	}
 
+	// Helper method to convert Message to MessageDTO with status
+	private MessageDTO toDTO(Message m) {
+		MessageDTO dto = new MessageDTO(
+			m.getMessageId(),
+			m.getChatRoom().getChatRoomId(),
+			m.getSender().getUserId(),
+			m.getContent(),
+			m.getSentAt(),
+			m.getDeleted(),
+			m.getEditedAt(),
+			m.getMediaUrl(),
+			m.getMediaFileName(),
+			m.getMediaContentType()
+		);
+		
+		// Set status fields
+		String status = m.getStatus();
+		dto.setStatus(status);
+		dto.setSeen("SEEN".equals(status));
+		dto.setDelivered("DELIVERED".equals(status) || "SEEN".equals(status));
+		
+		return dto;
+	}
+
 	@PostMapping
     public ResponseEntity<?> send(@RequestParam Long roomId, @RequestParam Long senderId, @RequestBody String content) {
         System.out.println("📤 Sending message to room: " + roomId + " from user: " + senderId + " content: " + content);
@@ -51,7 +75,7 @@ public class MessageController {
         logger.info("📤 Request received at: {}", java.time.LocalDateTime.now());
         try {
             Message msg = messageService.sendMessage(roomId, senderId, content);
-            MessageDTO dto = new MessageDTO(msg.getMessageId(), msg.getChatRoom().getChatRoomId(), msg.getSender().getUserId(), msg.getContent(), msg.getSentAt(), msg.getDeleted(), msg.getEditedAt(), msg.getMediaUrl(), msg.getMediaFileName(), msg.getMediaContentType());
+            MessageDTO dto = toDTO(msg);
             // Publish realtime to /topic/rooms/{roomId}
             messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
             return ResponseEntity.status(HttpStatus.CREATED).body(dto);
@@ -67,7 +91,7 @@ public class MessageController {
         System.out.println("📥 Loading messages for room: " + roomId + " page: " + page + " size: " + size);
         logger.info("📥 Loading messages for room: {} page: {} size: {}", roomId, page, size);
         List<MessageDTO> dtos = messageService.listMessagesByRoom(roomId, page, size).stream()
-            .map(m -> new MessageDTO(m.getMessageId(), m.getChatRoom().getChatRoomId(), m.getSender().getUserId(), m.getContent(), m.getSentAt(), m.getDeleted(), m.getEditedAt(), m.getMediaUrl(), m.getMediaFileName(), m.getMediaContentType()))
+            .map(this::toDTO)
             .collect(Collectors.toList());
         System.out.println("📥 Found " + dtos.size() + " messages for room " + roomId);
         if (!dtos.isEmpty()) {
@@ -80,7 +104,7 @@ public class MessageController {
 	public ResponseEntity<?> edit(@PathVariable Long messageId, @RequestParam Long editorUserId, @RequestBody String newContent) {
 		try {
 			Message m = messageService.editMessage(messageId, editorUserId, newContent);
-			MessageDTO dto = new MessageDTO(m.getMessageId(), m.getChatRoom().getChatRoomId(), m.getSender().getUserId(), m.getContent(), m.getSentAt(), m.getDeleted(), m.getEditedAt());
+			MessageDTO dto = toDTO(m);
 			messagingTemplate.convertAndSend("/topic/rooms/" + m.getChatRoom().getChatRoomId(), dto);
 			return ResponseEntity.ok(dto);
 		} catch (IllegalArgumentException ex) {
@@ -103,7 +127,7 @@ public class MessageController {
 	@PostMapping("/room/{roomId}/delivered/{messageId}")
 	public ResponseEntity<MessageDTO> delivered(@PathVariable Long roomId, @PathVariable Long messageId, @RequestParam Long userId) {
 		Message m = messageService.markDelivered(messageId, userId);
-		MessageDTO dto = new MessageDTO(m.getMessageId(), m.getChatRoom().getChatRoomId(), m.getSender().getUserId(), m.getContent(), m.getSentAt(), m.getDeleted(), m.getEditedAt());
+		MessageDTO dto = toDTO(m);
 		messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
 		return ResponseEntity.ok(dto);
 	}
@@ -111,35 +135,35 @@ public class MessageController {
 	@PostMapping("/room/{roomId}/seen/{messageId}")
 	public ResponseEntity<MessageDTO> seen(@PathVariable Long roomId, @PathVariable Long messageId, @RequestParam Long userId) {
 		Message m = messageService.markSeen(messageId, userId);
-		MessageDTO dto = new MessageDTO(m.getMessageId(), m.getChatRoom().getChatRoomId(), m.getSender().getUserId(), m.getContent(), m.getSentAt(), m.getDeleted(), m.getEditedAt());
+		MessageDTO dto = toDTO(m);
 		messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
 		return ResponseEntity.ok(dto);
 	}
 
 	@PostMapping(value = "/room/{roomId}/media", consumes = {"multipart/form-data"})
-	public ResponseEntity<MessageDTO> uploadMedia(@PathVariable Long roomId, @RequestParam Long senderId, @RequestPart("file") MultipartFile file) throws Exception {
-		String originalFileName = file.getOriginalFilename();
-		String contentType = file.getContentType();
-		
-		// Lưu file thực tế
-		String storedFileName = fileStorageService.storeFile(file);
-		String url = fileStorageService.getFileUrl(storedFileName);
-		
-		Message m = messageService.sendMedia(roomId, senderId, originalFileName, contentType, url);
-		MessageDTO dto = new MessageDTO(m.getMessageId(), m.getChatRoom().getChatRoomId(), m.getSender().getUserId(), m.getContent(), m.getSentAt(), m.getDeleted(), m.getEditedAt());
-		// Set media fields
-		dto.setMediaUrl(m.getMediaUrl());
-		dto.setMediaFileName(m.getMediaFileName());
-		dto.setMediaContentType(m.getMediaContentType());
-		// Gửi tin nhắn qua WebSocket
-		messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
-		return ResponseEntity.status(HttpStatus.CREATED).body(dto);
-	}
-	
-	// Test endpoint để kiểm tra controller có hoạt động không
-	@GetMapping("/test")
-	public ResponseEntity<String> test() {
-		logger.info("🧪 Test endpoint called");
-		return ResponseEntity.ok("MessageController is working!");
+	public ResponseEntity<?> uploadMedia(@PathVariable Long roomId, @RequestParam Long senderId, @RequestPart("file") MultipartFile file) {
+		try {
+			logger.info("📎 Upload file request - roomId: {}, senderId: {}, fileName: {}", roomId, senderId, file.getOriginalFilename());
+			
+			String originalFileName = file.getOriginalFilename();
+			String contentType = file.getContentType();
+			
+			// Lưu file thực tế
+			String storedFileName = fileStorageService.storeFile(file);
+			String url = fileStorageService.getFileUrl(storedFileName);
+			
+			logger.info("✅ File stored: {} -> {}", originalFileName, url);
+			
+			Message m = messageService.sendMedia(roomId, senderId, originalFileName, contentType, url);
+			MessageDTO dto = toDTO(m);
+			// Gửi tin nhắn qua WebSocket
+			messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
+			
+			logger.info("✅ Upload successful");
+			return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+		} catch (Exception e) {
+			logger.error("❌ Upload failed", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Upload failed: " + e.getMessage());
+		}
 	}
 }

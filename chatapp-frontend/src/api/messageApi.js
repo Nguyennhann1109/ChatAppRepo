@@ -3,21 +3,11 @@ import axiosInstance from './axios';
 export const messageApi = {
   // Gửi tin nhắn
   send: async (roomId, senderId, content) => {
-    // Encode content as base64 (UTF-8 safe) to avoid emoji being lost if backend DB charset
-    // does not support utf8mb4. Backend will store the base64 string.
-    const toBase64 = (str) => {
-      const bytes = new TextEncoder().encode(str);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    };
-
-    const encoded = toBase64(content);
     console.log("🌐 API Call - URL:", `/api/messages?roomId=${roomId}&senderId=${senderId}`);
-    console.log("🌐 API Call - Encoded Content (base64):", encoded);
+    console.log("🌐 API Call - Content:", content);
     const response = await axiosInstance.post(
       `/api/messages?roomId=${roomId}&senderId=${senderId}`,
-      encoded,
+      content,
       { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
     );
     console.log("🌐 API Response:", response.data);
@@ -34,17 +24,9 @@ export const messageApi = {
 
   // Sửa tin nhắn
   edit: async (messageId, editorUserId, newContent) => {
-    const toBase64 = (str) => {
-      const bytes = new TextEncoder().encode(str);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    };
-
-    const encoded = toBase64(newContent);
     const response = await axiosInstance.put(
       `/api/messages/${messageId}?editorUserId=${editorUserId}`,
-      encoded,
+      newContent,
       { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
     );
     return response.data;

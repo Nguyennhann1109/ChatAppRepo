@@ -46,6 +46,7 @@ public class MessageServiceImpl implements MessageService {
 		User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));
 		
 		Message msg = new Message(room, sender, content);
+		msg.setStatus("SENT"); // Set initial status
 		Message savedMsg = messageRepository.save(msg);
 		
 		// Tạo thông báo tin nhắn chưa đọc cho các thành viên khác (ngoại trừ người gửi)
@@ -114,11 +115,12 @@ public class MessageServiceImpl implements MessageService {
 	public Message sendMedia(Long roomId, Long senderId, String fileName, String contentType, String url) {
 		ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
 		User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));
-		// Đặt content là tên file để hiển thị
-		Message msg = new Message(room, sender, fileName);
+		// Đặt content rỗng hoặc mô tả ngắn, không dùng fileName vì có thể chứa base64
+		Message msg = new Message(room, sender, "[File đính kèm]");
 		msg.setMediaFileName(fileName);
 		msg.setMediaContentType(contentType);
 		msg.setMediaUrl(url);
+		msg.setStatus("SENT"); // Set initial status
 		return messageRepository.save(msg);
 	}
 

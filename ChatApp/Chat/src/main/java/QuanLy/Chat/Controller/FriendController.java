@@ -39,8 +39,8 @@ public class FriendController {
     @PostMapping("/accept")
     public ResponseEntity<?> acceptFriend(@RequestBody FriendDTO request) {
         try {
-            // friendId = người gửi lời mời, userId = người nhận hiện tại
-            return ResponseEntity.ok(friendService.acceptFriend(request.getFriendId(), request.getUserId()));
+            // userId = người nhận lời mời (đang đăng nhập), friendId = người gửi
+            return ResponseEntity.ok(friendService.acceptFriend(request.getUserId(), request.getFriendId()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {
@@ -52,8 +52,8 @@ public class FriendController {
     @PostMapping("/reject")
     public ResponseEntity<?> rejectFriend(@RequestBody FriendDTO request) {
         try {
-            // friendId = người gửi, userId = người nhận
-            friendService.rejectFriend(request.getFriendId(), request.getUserId());
+            // userId = người nhận lời mời (đang đăng nhập), friendId = người gửi
+            friendService.rejectFriend(request.getUserId(), request.getFriendId());
             return ResponseEntity.ok("Đã từ chối lời mời");
         } catch (RuntimeException e) {
             return ResponseEntity.status(500).body(e.getMessage());

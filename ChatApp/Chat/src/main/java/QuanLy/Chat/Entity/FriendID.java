@@ -1,15 +1,24 @@
 package QuanLy.Chat.Entity;
 
-import lombok.*;
 import java.io.Serializable;
 import java.util.Objects;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class FriendID implements Serializable {
     private Long user;
     private Long friend;
+
+    public FriendID() {}
+
+    public FriendID(Long user, Long friend) {
+        this.user = user;
+        this.friend = friend;
+    }
+
+    public Long getUser() { return user; }
+    public void setUser(Long user) { this.user = user; }
+
+    public Long getFriend() { return friend; }
+    public void setFriend(Long friend) { this.friend = friend; }
 
     @Override
     public boolean equals(Object o) {

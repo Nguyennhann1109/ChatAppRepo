@@ -10,6 +10,9 @@ public class MessageDTO {
 	private LocalDateTime sentAt;
     private Boolean deleted;
     private LocalDateTime editedAt;
+    private Boolean seen;
+    private Boolean delivered;
+    private String status; // SENT, DELIVERED, SEEN
     
     // Media fields
     private String mediaUrl;
@@ -56,6 +59,12 @@ public class MessageDTO {
     public void setDeleted(Boolean deleted) { this.deleted = deleted; }
     public LocalDateTime getEditedAt() { return editedAt; }
     public void setEditedAt(LocalDateTime editedAt) { this.editedAt = editedAt; }
+    public Boolean getSeen() { return seen; }
+    public void setSeen(Boolean seen) { this.seen = seen; }
+    public Boolean getDelivered() { return delivered; }
+    public void setDelivered(Boolean delivered) { this.delivered = delivered; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     
     // Media getters and setters
     public String getMediaUrl() { return mediaUrl; }

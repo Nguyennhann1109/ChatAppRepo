@@ -14,6 +14,9 @@ const friendApi = {
   // Lấy danh sách bạn bè
   getFriends: (userId) => axios.get(`${BASE}/${userId}`),
 
+  // Tìm kiếm người dùng theo username
+  searchUser: (username) => axios.get(`/api/users/search?username=${encodeURIComponent(username)}`),
+
   // Gửi lời mời kết bạn
   sendRequest: (userId, friendId) => {
     console.log('POST /add payload:', { userId, friendId });

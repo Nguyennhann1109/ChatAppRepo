@@ -24,6 +24,16 @@ const notificationApi = {
   // Xóa tất cả thông báo đã đọc
   deleteReadNotifications: (userId) => {
     return axios.delete(`/api/notifications/user/${userId}/delete-read`);
+  },
+
+  // Xóa tất cả thông báo (cả đã đọc và chưa đọc)
+  clearAll: (userId) => {
+    return axios.delete(`/api/notifications/user/${userId}/clear-all`);
+  },
+
+  // Xóa 1 thông báo cụ thể
+  deleteNotification: (notificationId) => {
+    return axios.delete(`/api/notifications/${notificationId}`);
   }
 };
 

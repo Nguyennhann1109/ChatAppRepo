@@ -50,5 +50,11 @@ export const roomApi = {
   removeMember: async (roomId, userId) => {
     const response = await axiosInstance.delete(`/api/rooms/${roomId}/members/${userId}`);
     return response.data;
+  },
+
+  // ✨ MỚI: Lấy tất cả phòng chat của user (giống Zalo)
+  getUserRooms: async (userId) => {
+    const response = await axiosInstance.get(`/api/rooms/user/${userId}`);
+    return response.data;
   }
 };

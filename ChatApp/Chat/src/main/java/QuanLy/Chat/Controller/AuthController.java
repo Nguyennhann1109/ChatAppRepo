@@ -15,16 +15,18 @@ import QuanLy.Chat.Entity.User;
 import QuanLy.Chat.Repository.UserRepository;
 import QuanLy.Chat.DTO.auth.RegisterRequest;
 import QuanLy.Chat.DTO.auth.LoginRequest;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository) {
+    public AuthController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
 	}
 
 	@PostMapping("/register")
@@ -52,6 +54,11 @@ public class AuthController {
         return userRepository.findByUsername(req.getUsername())
                 .map(u -> {
                     if (passwordEncoder.matches(req.getPassword(), u.getPasswordHash())) {
+                        // ✅ Đánh dấu user online
+                        u.setIsOnline(true);
+                        u.setLastSeen(LocalDateTime.now());
+                        userRepository.save(u);
+                        
                         // ✅ Lưu user vào session để các API khác có thể xác thực
                         session.setAttribute("user", u);
                         session.setAttribute("userId", u.getUserId());
@@ -64,6 +71,15 @@ public class AuthController {
 
 	@PostMapping("/logout")
 	public ResponseEntity<Void> logout(HttpSession session) {
+		// Đánh dấu user offline
+		Long userId = (Long) session.getAttribute("userId");
+		if (userId != null) {
+			userRepository.findById(userId).ifPresent(u -> {
+				u.setIsOnline(false);
+				u.setLastSeen(LocalDateTime.now());
+				userRepository.save(u);
+			});
+		}
 		session.invalidate();
 		return ResponseEntity.noContent().build();
 	}

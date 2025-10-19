@@ -19,6 +19,10 @@ public interface ChatRoomService {
 	
 	// Utility methods
 	boolean existsPrivateRoomBetweenUsers(Long userId1, Long userId2);
+	
+	// Lấy tất cả phòng chat của user (bao gồm cả riêng tư và nhóm)
+	List<ChatRoom> getUserRooms(Long userId);
+	ChatRoom getPrivateRoomBetweenUsers(Long userId1, Long userId2);
 }
 
 

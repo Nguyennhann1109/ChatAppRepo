@@ -1,15 +1,10 @@
 package QuanLy.Chat.Entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 @Entity
 @Table(name = "friends")
 @IdClass(FriendID.class)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Friend {
     @Id
     @ManyToOne
@@ -23,4 +18,21 @@ public class Friend {
 
     @Column(nullable = false)
     private String status; // pending, accepted
+
+    public Friend() {}
+
+    public Friend(User user, User friend, String status) {
+        this.user = user;
+        this.friend = friend;
+        this.status = status;
+    }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public User getFriend() { return friend; }
+    public void setFriend(User friend) { this.friend = friend; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

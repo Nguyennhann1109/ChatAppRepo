@@ -1,47 +1,81 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { 
-  HiChat, 
-  HiUserGroup, 
-  HiUsers, 
-  HiBell, 
-  HiCog, 
-  HiMenu, 
-  HiX,
-  HiMoon,
-  HiSun,
-  HiLogout,
-  HiPlus
+import { Badge, Button } from 'flowbite-react';
+import { useEffect, useState } from 'react';
+import {
+    HiBell,
+    HiChat,
+    HiCog,
+    HiLogout,
+    HiMenu,
+    HiMoon,
+    HiPlus,
+    HiSun,
+    HiUserGroup,
+    HiUsers,
+    HiX
 } from 'react-icons/hi';
-import { Button, Badge } from 'flowbite-react';
+import { useNavigate } from 'react-router-dom';
+import notificationApi from '../../api/notificationApi';
+import { useAuth } from '../../context/AuthContext';
 
 const ModernLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState('chats');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (user?.userId) {
+        try {
+          const response = await notificationApi.getUnreadNotifications(user.userId);
+          setUnreadCount(response.data?.length || 0);
+        } catch (error) {
+          console.error('Lỗi load thông báo:', error);
+        }
+      }
+    };
+    loadUnreadCount();
+    // Reload every 60 seconds (tăng từ 30s lên 60s để giảm tải)
+    const interval = setInterval(loadUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, [user?.userId]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   const sidebarItems = [
-    { id: 'chats', label: 'Chats', icon: HiChat, badge: 3 },
-    { id: 'rooms', label: 'Rooms', icon: HiUserGroup, badge: null },
-    { id: 'friends', label: 'Friends', icon: HiUsers, badge: 2 },
-    { id: 'notifications', label: 'Notifications', icon: HiBell, badge: 5 },
+    { id: 'chats', label: 'Tin nhắn', icon: HiChat, badge: null },
+    { id: 'friends', label: 'Bạn bè', icon: HiUsers, badge: null },
+    { id: 'notifications', label: 'Thông báo', icon: HiBell, badge: unreadCount > 0 ? unreadCount : null },
   ];
+
+  const navigate = useNavigate();
+
+  const handleNavClick = (id) => {
+    setActiveTab(id);
+    // navigate to routes when available
+    const routeMap = {
+      chats: '/chat',
+      friends: '/friends',
+      notifications: '/notifications',
+    };
+    const to = routeMap[id] || '/chat';
+    navigate(to);
+  };
 
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-dark-900 transition-colors duration-300 ${darkMode ? 'dark' : ''}`}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -99,11 +133,11 @@ const ModernLayout = ({ children }) => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => handleNavClick(item.id)}
                   className={`
                     w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200
-                    ${activeTab === item.id 
-                      ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300' 
+                    ${activeTab === item.id
+                      ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-700'
                     }
                   `}
@@ -112,10 +146,8 @@ const ModernLayout = ({ children }) => {
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.label}</span>
                   </div>
-                  {item.badge && (
-                    <Badge color="red" size="sm">
-                      {item.badge}
-                    </Badge>
+                  {item.id === 'notifications' && unreadCount > 0 && (
+                    <Badge color="failure" size="sm">{unreadCount}</Badge>
                   )}
                 </button>
               );
@@ -132,16 +164,7 @@ const ModernLayout = ({ children }) => {
               onClick={toggleDarkMode}
             >
               {darkMode ? <HiSun className="w-4 h-4 mr-2" /> : <HiMoon className="w-4 h-4 mr-2" />}
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
-            </Button>
-            <Button
-              size="sm"
-              color="gray"
-              variant="ghost"
-              className="w-full justify-start"
-            >
-              <HiCog className="w-4 h-4 mr-2" />
-              Settings
+              {darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
             </Button>
             <Button
               size="sm"
@@ -151,7 +174,7 @@ const ModernLayout = ({ children }) => {
               onClick={handleLogout}
             >
               <HiLogout className="w-4 h-4 mr-2" />
-              Logout
+              Đăng xuất
             </Button>
           </div>
         </div>
@@ -177,10 +200,7 @@ const ModernLayout = ({ children }) => {
               </h2>
             </div>
             <div className="flex items-center space-x-2">
-              <Button size="sm" color="primary" className="hidden sm:flex">
-                <HiPlus className="w-4 h-4 mr-1" />
-                New Chat
-              </Button>
+              {/* Nút New Chat đã chuyển vào ConversationList */}
             </div>
           </div>
         </header>

@@ -1,8 +1,13 @@
-import React from 'react';
-import FriendList from '../components/friends/FriendList';
+import React, { Suspense } from 'react';
+
+const FriendList = React.lazy(() => import('../components/friends/FriendList'));
 
 function FriendsPage() {
-  return <FriendList />;
+  return (
+    <Suspense fallback={<div className="p-6">Đang tải bạn bè...</div>}>
+      <FriendList />
+    </Suspense>
+  );
 }
 
 export default FriendsPage;

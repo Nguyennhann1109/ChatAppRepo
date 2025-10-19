@@ -29,6 +29,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Optional<User> getUserByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    @Override
     public User saveUser(User user) {
         // Basic validation: tránh username/email trùng (nếu repository có hỗ trợ)
         if (user.getUsername() != null && userRepository.existsByUsername(user.getUsername())) {

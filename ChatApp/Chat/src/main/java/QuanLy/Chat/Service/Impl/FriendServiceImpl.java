@@ -93,6 +93,13 @@ public class FriendServiceImpl implements FriendService {
         // Tạo phòng chat riêng
         createPrivateChatRoom(user, friend);
 
+        // Xóa thông báo friend request cũ
+        try {
+            notificationService.deleteFriendRequestNotification(userId, friendId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa thông báo lời mời: " + e.getMessage());
+        }
+
         // Tạo thông báo cho người gửi lời mời
         try {
             notificationService.createFriendAcceptNotification(friendId, userId);
@@ -105,8 +112,16 @@ public class FriendServiceImpl implements FriendService {
 
     @Override
     public void rejectFriend(Long userId, Long friendId) {
+        // Xóa lời mời trong DB
         friendRepository.findByUser_UserIdAndFriend_UserId(friendId, userId)
                 .ifPresent(friendRepository::delete);
+        
+        // Xóa thông báo friend request
+        try {
+            notificationService.deleteFriendRequestNotification(userId, friendId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa thông báo lời mời: " + e.getMessage());
+        }
     }
 
     @Override
@@ -117,10 +132,17 @@ public class FriendServiceImpl implements FriendService {
 
     @Override
     public void deleteFriend(Long userId, Long friendId) {
+        // Xóa quan hệ bạn bè
         friendRepository.findByUser_UserIdAndFriend_UserId(userId, friendId)
                 .ifPresent(friendRepository::delete);
         friendRepository.findByUser_UserIdAndFriend_UserId(friendId, userId)
                 .ifPresent(friendRepository::delete);
+        
+        // Xóa phòng chat riêng tư giữa 2 người
+        ChatRoom privateRoom = chatRoomService.getPrivateRoomBetweenUsers(userId, friendId);
+        if (privateRoom != null) {
+            chatRoomService.deleteRoom(privateRoom.getChatRoomId());
+        }
     }
 
     @Override
@@ -128,7 +150,18 @@ public class FriendServiceImpl implements FriendService {
         return friendRepository.findByUser_UserId(userId)
                 .stream()
                 .filter(f -> "accepted".equalsIgnoreCase(f.getStatus()))
-                .map(f -> new FriendDTO(f.getUser().getUserId(), f.getFriend().getUserId(), f.getStatus()))
+                .map(f -> {
+                    User friend = f.getFriend();
+                    return new FriendDTO(
+                        f.getUser().getUserId(),
+                        friend.getUserId(),
+                        f.getStatus(),
+                        friend.getUsername(),
+                        friend.getDisplayName(),
+                        friend.getAvatarUrl(),
+                        friend.getEmail()
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
@@ -137,13 +170,18 @@ public class FriendServiceImpl implements FriendService {
         return friendRepository.findByFriend_UserId(userId)
                 .stream()
                 .filter(f -> "pending".equalsIgnoreCase(f.getStatus()))
-                .map(f -> new FriendDTO(
-    f.getUser().getUserId(),
-    f.getFriend().getUserId(),
-    f.getStatus(),
-    f.getUser().getUsername() // 👈 thêm username người gửi
-))
-
+                .map(f -> {
+                    User sender = f.getUser();
+                    return new FriendDTO(
+                        sender.getUserId(),
+                        f.getFriend().getUserId(),
+                        f.getStatus(),
+                        sender.getUsername(),
+                        sender.getDisplayName(),
+                        sender.getAvatarUrl(),
+                        sender.getEmail()
+                    );
+                })
                 .collect(Collectors.toList());
     }
 

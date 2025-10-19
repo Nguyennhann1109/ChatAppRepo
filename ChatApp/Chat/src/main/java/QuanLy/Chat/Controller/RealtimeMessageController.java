@@ -26,7 +26,24 @@ public class RealtimeMessageController {
 	public void sendMessage(@DestinationVariable Long roomId, @Payload MessageDTO payload) {
 		// Lưu tin nhắn qua service, dùng senderId + content từ payload
 		Message saved = messageService.sendMessage(roomId, payload.getSenderId(), payload.getContent());
-        MessageDTO dto = new MessageDTO(saved.getMessageId(), saved.getChatRoom().getChatRoomId(), saved.getSender().getUserId(), saved.getContent(), saved.getSentAt(), saved.getDeleted(), saved.getEditedAt());
+        // Tạo DTO với đầy đủ fields bao gồm media
+        MessageDTO dto = new MessageDTO(
+			saved.getMessageId(), 
+			saved.getChatRoom().getChatRoomId(), 
+			saved.getSender().getUserId(), 
+			saved.getContent(), 
+			saved.getSentAt(), 
+			saved.getDeleted(), 
+			saved.getEditedAt(),
+			saved.getMediaUrl(),
+			saved.getMediaFileName(),
+			saved.getMediaContentType()
+		);
+		// Set status
+		dto.setStatus(saved.getStatus());
+		dto.setSeen("SEEN".equals(saved.getStatus()));
+		dto.setDelivered("DELIVERED".equals(saved.getStatus()) || "SEEN".equals(saved.getStatus()));
+		
 		// Phát tới topic phòng: /topic/rooms/{roomId}
 		messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
 	}

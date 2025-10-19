@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || '/ws';
 
 export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId) => {
   const clientRef = useRef(null);
@@ -27,7 +27,10 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: (str) => console.log('STOMP:', str),
+      debug: (str) => {
+        // Tắt debug hoặc log minimal
+        // console.log(str);
+      },
     });
 
     stompClient.onConnect = () => {
@@ -53,7 +56,7 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
           const announce = { userId: currentUserId, online: true };
           // publish to /app/presence (server should handle MessageMapping)
           stompClient.publish({ destination: '/app/presence', body: JSON.stringify(announce) });
-          console.log('📣 Announced presence:', announce);
+          // Announced presence
         }
       } catch (e) {
         console.warn('⚠️ Could not announce presence on connect:', e);
@@ -64,13 +67,13 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
         try {
           roomSubRef.current = stompClient.subscribe(`/topic/rooms/${roomIdRef.current}`, (message) => {
             const msg = JSON.parse(message.body);
-            console.log('📩 Nhận tin nhắn mới:', msg);
+            // New message received
             if (onMessageRef.current) onMessageRef.current(msg);
           });
 
           typingSubRef.current = stompClient.subscribe(`/topic/rooms/${roomIdRef.current}/typing`, (message) => {
             const typing = JSON.parse(message.body);
-            console.log('✍️ Typing:', typing);
+            // Typing indicator received
           });
         } catch (e) {
           console.error('❌ Error subscribing to room topics on connect:', e);
@@ -130,13 +133,13 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
       try {
         roomSubRef.current = client.subscribe(`/topic/rooms/${roomId}`, (message) => {
           const msg = JSON.parse(message.body);
-          console.log('📩 Nhận tin nhắn mới (room change):', msg);
+          // New message received (room change)
           if (onMessageRef.current) onMessageRef.current(msg);
         });
 
         typingSubRef.current = client.subscribe(`/topic/rooms/${roomId}/typing`, (message) => {
           const typing = JSON.parse(message.body);
-          console.log('✍️ Typing (room change):', typing);
+          // Typing indicator received (room change)
         });
       } catch (e) {
         console.error('❌ Error subscribing to new room topics:', e);
@@ -151,7 +154,7 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
     if (client?.connected && rId) {
       const payload = { roomId: rId, senderId, content };
       client.publish({ destination: `/app/rooms/${rId}/send`, body: JSON.stringify(payload) });
-      console.log('📤 Gửi tin nhắn:', payload);
+      // Message sent
     } else {
       console.error('❌ WebSocket chưa kết nối hoặc roomId chưa có');
     }
@@ -166,5 +169,17 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
     }
   };
 
-  return { connected, sendMessage, sendTyping };
+  // Gửi presence update
+  const sendPresenceUpdate = (userId, online) => {
+    const client = clientRef.current;
+    if (client?.connected) {
+      const payload = { userId, online };
+      client.publish({ destination: '/app/presence', body: JSON.stringify(payload) });
+      console.log(`📡 Sent presence: userId=${userId}, online=${online}`);
+    } else {
+      console.warn('⚠️ Cannot send presence - WebSocket not connected');
+    }
+  };
+
+  return { connected, sendMessage, sendTyping, sendPresenceUpdate };
 };

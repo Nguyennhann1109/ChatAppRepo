@@ -2,6 +2,8 @@ package QuanLy.Chat.Controller;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,18 +18,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 import QuanLy.Chat.Entity.ChatRoom;
 import QuanLy.Chat.Entity.ChatRoomMember;
+import QuanLy.Chat.Entity.Message;
+import QuanLy.Chat.Entity.User;
 import QuanLy.Chat.Service.ChatRoomService;
 import QuanLy.Chat.DTO.ChatRoomDTO;
 import QuanLy.Chat.DTO.ChatRoomMemberDTO;
+import QuanLy.Chat.Repository.MessageRepository;
 
 @RestController
 @RequestMapping("/api/rooms")
 public class ChatRoomController {
 
 	private final ChatRoomService chatRoomService;
+	private final MessageRepository messageRepository;
 
-	public ChatRoomController(ChatRoomService chatRoomService) {
+	public ChatRoomController(ChatRoomService chatRoomService, MessageRepository messageRepository) {
 		this.chatRoomService = chatRoomService;
+		this.messageRepository = messageRepository;
 	}
 
 	@PostMapping
@@ -102,6 +109,58 @@ public class ChatRoomController {
 			))
 			.collect(Collectors.toList());
 		return ResponseEntity.ok(memberDTOs);
+	}
+
+	// Lấy tất cả phòng chat của user (giống Zalo - gộp Chats và Rooms)
+	@GetMapping("/user/{userId}")
+	public ResponseEntity<List<ChatRoomDTO>> getUserRooms(@PathVariable Long userId) {
+		List<ChatRoom> rooms = chatRoomService.getUserRooms(userId);
+		
+		// Loại bỏ phòng trùng bằng Set
+		Set<Long> seenRoomIds = new HashSet<>();
+		List<ChatRoomDTO> dtos = rooms.stream()
+			.filter(room -> seenRoomIds.add(room.getChatRoomId())) // Chỉ giữ phòng chưa thấy
+			.map(room -> {
+			// Lấy tin nhắn cuối cùng
+			Message lastMsg = messageRepository.findTopByChatRoomOrderBySentAtDesc(room);
+			
+			ChatRoomDTO dto = new ChatRoomDTO();
+			dto.setChatRoomId(room.getChatRoomId());
+			dto.setRoomName(room.getRoomName());
+			dto.setIsGroup(room.getIsGroup());
+			dto.setCreatedAt(room.getCreatedAt());
+			
+			// Thêm thông tin tin nhắn cuối
+			if (lastMsg != null) {
+				dto.setLastMessage(lastMsg.getContent());
+				dto.setLastMessageTime(lastMsg.getSentAt());
+				dto.setLastMessageSenderId(lastMsg.getSender().getUserId());
+			}
+			
+			// Nếu là chat riêng tư, thêm thông tin người chat
+			if (!room.getIsGroup()) {
+				List<ChatRoomMember> members = chatRoomService.listMembers(room.getChatRoomId());
+				System.out.println("🔍 Room " + room.getChatRoomId() + " has " + members.size() + " members");
+				// Tìm người khác (không phải userId hiện tại)
+				for (ChatRoomMember member : members) {
+					System.out.println("  - Member userId: " + member.getUser().getUserId() + " vs current: " + userId);
+					if (!member.getUser().getUserId().equals(userId)) {
+						User otherUser = member.getUser();
+						dto.setOtherUserId(otherUser.getUserId());
+						dto.setOtherUsername(otherUser.getUsername());
+						dto.setOtherDisplayName(otherUser.getDisplayName());
+						dto.setOtherAvatarUrl(otherUser.getAvatarUrl());
+						dto.setOtherUserOnline(otherUser.getIsOnline());
+						System.out.println("✅ Set otherUserId: " + otherUser.getUserId() + " online: " + otherUser.getIsOnline());
+						break;
+					}
+				}
+			}
+			
+			return dto;
+		}).collect(Collectors.toList());
+		
+		return ResponseEntity.ok(dtos);
 	}
 }
 

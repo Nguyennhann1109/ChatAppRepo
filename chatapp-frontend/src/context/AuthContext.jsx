@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { authApi } from '../api/authApi';
+import { useWebSocket } from '../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -7,14 +8,40 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { sendPresenceUpdate } = useWebSocket();
+  const presenceSentRef = useRef(false); // Track if presence was sent
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const initializeAuth = async () => {
+      try {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error('Error loading saved user:', error);
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initializeAuth();
+  }, []); // Chỉ chạy 1 lần khi mount
+
+  // Gửi presence update sau khi user đã được set (chỉ 1 lần)
+  useEffect(() => {
+    if (user?.userId && sendPresenceUpdate && !presenceSentRef.current) {
+      sendPresenceUpdate(user.userId, true);
+      presenceSentRef.current = true;
     }
-    setLoading(false);
-  }, []);
+    
+    // Reset flag khi user logout
+    if (!user) {
+      presenceSentRef.current = false;
+    }
+  }, [user?.userId]); // Không include sendPresenceUpdate để tránh loop
 
   // 🧩 Hàm đăng nhập
   const login = async (username, password) => {
@@ -22,6 +49,7 @@ export const AuthProvider = ({ children }) => {
       const userDTO = await authApi.login({ username, password });
       localStorage.setItem('user', JSON.stringify(userDTO));
       setUser(userDTO);
+      // Presence update sẽ được gửi tự động qua useEffect
 
       toast.success('🎉 Đăng nhập thành công!', {
         duration: 4000,
@@ -88,7 +116,13 @@ export const AuthProvider = ({ children }) => {
 
   // 🧩 Hàm đăng xuất
   const logout = async () => {
+    // Broadcast offline status
+    if (user && sendPresenceUpdate) {
+      sendPresenceUpdate(user.userId, false);
+    }
+    
     await authApi.logout();
+    localStorage.removeItem('user');
     setUser(null);
     toast.success('👋 Đã đăng xuất');
   };
