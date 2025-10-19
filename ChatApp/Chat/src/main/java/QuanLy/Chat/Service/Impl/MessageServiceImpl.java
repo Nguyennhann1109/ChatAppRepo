@@ -38,46 +38,20 @@ public class MessageServiceImpl implements MessageService {
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Message sendMessage(Long roomId, Long senderId, String content) {
-		try {
-			if (content == null || content.isBlank()) {
-				throw new IllegalArgumentException("Nội dung tin nhắn trống");
-			}
-			System.out.println("🔍 Looking for room: " + roomId + " and sender: " + senderId);
-			ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
-			User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));
-			System.out.println("✅ Found room: " + room.getChatRoomId() + " and sender: " + sender.getUserId());
-			Message msg = new Message(room, sender, content);
-			Message savedMsg = messageRepository.save(msg);
-			messageRepository.flush(); // Force flush to database
-			System.out.println("💾 Message saved to database: " + savedMsg.getMessageId() + " - " + savedMsg.getContent());
-			System.out.println("💾 Message saved at: " + java.time.LocalDateTime.now());
-			System.out.println("💾 Message flushed to database");
-			
-			// Verify the message was actually saved
-			Message verifyMsg = messageRepository.findById(savedMsg.getMessageId()).orElse(null);
-			if (verifyMsg == null) {
-				System.out.println("❌ CRITICAL: Message not found after save!");
-			} else {
-				System.out.println("✅ Message verified in database: " + verifyMsg.getContent());
-			}
-			
-			// Test database connection by counting messages
-			long messageCount = messageRepository.count();
-			System.out.println("📊 Total messages in database: " + messageCount);
-			
-			// Test database connection by listing messages for this room
-			List<Message> roomMessages = messageRepository.findByChatRoom(room);
-			System.out.println("📊 Messages in room " + roomId + ": " + roomMessages.size());
-			
-			// Tạo thông báo tin nhắn chưa đọc cho các thành viên khác (ngoại trừ người gửi)
-			createUnreadMessageNotifications(room, sender, savedMsg);
-			
-			return savedMsg;
-		} catch (Exception e) {
-			System.out.println("❌ Error in sendMessage: " + e.getMessage());
-			e.printStackTrace();
-			throw e;
+		if (content == null || content.isBlank()) {
+			throw new IllegalArgumentException("Nội dung tin nhắn trống");
 		}
+		
+		ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
+		User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Không tìm thấy người gửi"));
+		
+		Message msg = new Message(room, sender, content);
+		Message savedMsg = messageRepository.save(msg);
+		
+		// Tạo thông báo tin nhắn chưa đọc cho các thành viên khác (ngoại trừ người gửi)
+		createUnreadMessageNotifications(room, sender, savedMsg);
+		
+		return savedMsg;
 	}
 
 	@Override

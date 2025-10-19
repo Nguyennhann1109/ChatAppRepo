@@ -29,11 +29,6 @@ public class User {
     @Column(length = 100)
     private String displayName;
     
-    @Column(length = 50)
-    private String externalId; // ID từ Google/Facebook
-    
-    @Column(length = 20)
-    private String provider; // google, facebook
 
     @Column(unique = true, length = 15)
     private String phoneNumber;

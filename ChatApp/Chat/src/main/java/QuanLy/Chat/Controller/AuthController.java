@@ -50,9 +50,15 @@ public class AuthController {
 	@PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
         return userRepository.findByUsername(req.getUsername())
-                .map(u -> passwordEncoder.matches(req.getPassword(), u.getPasswordHash()) ?
-                        ResponseEntity.ok(new UserDTO(u.getUserId(), u.getUsername(), u.getEmail(), u.getPhoneNumber(), u.getAvatarUrl()))
-                        : ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Sai username hoặc password"))
+                .map(u -> {
+                    if (passwordEncoder.matches(req.getPassword(), u.getPasswordHash())) {
+                        // ✅ Lưu user vào session để các API khác có thể xác thực
+                        session.setAttribute("user", u);
+                        session.setAttribute("userId", u.getUserId());
+                        return ResponseEntity.ok(new UserDTO(u.getUserId(), u.getUsername(), u.getEmail(), u.getPhoneNumber(), u.getAvatarUrl()));
+                    }
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Sai username hoặc password");
+                })
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Sai username hoặc password"));
 	}
 

@@ -1,24 +1,9 @@
-import axios from './axios';
-
+// OAuth2 API removed - stub to avoid import errors
 const oauth2Api = {
-  // Lấy thông tin user hiện tại
-  getCurrentUser: () => {
-    return axios.get('/api/oauth2/user');
-  },
-
-  // Đăng xuất
-  logout: () => {
-    return axios.get('/api/oauth2/logout');
-  },
-
-  // Redirect URLs cho OAuth2
-  getGoogleLoginUrl: () => {
-    return '/oauth2/authorization/google';
-  },
-
-  getFacebookLoginUrl: () => {
-    return '/oauth2/authorization/facebook';
-  }
+  getGoogleLoginUrl: () => '#',
+  getFacebookLoginUrl: () => '#',
+  getCurrentUser: () => Promise.resolve(null),
+  logout: () => Promise.resolve(null),
 };
 
 export default oauth2Api;

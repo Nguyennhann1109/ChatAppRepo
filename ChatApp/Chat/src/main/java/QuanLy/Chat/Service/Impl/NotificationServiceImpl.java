@@ -28,51 +28,56 @@ public class NotificationServiceImpl implements NotificationService {
 		this.objectMapper = new ObjectMapper();
 	}
 
+	// Helper method để tránh code trùng lặp
+	private User findUserById(Long userId) {
+		return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+	}
+
 	@Override
 	public List<Notification> listByUser(Long userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		User user = findUserById(userId);
 		return notificationRepository.findByUser(user);
 	}
 
 	@Override
 	public List<Notification> listUnreadByUser(Long userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		User user = findUserById(userId);
 		return notificationRepository.findByUserAndIsReadFalse(user);
 	}
 
 	@Override
 	public Notification create(Long userId, String message) {
-		if (message == null || message.isBlank()) {
-			throw new IllegalArgumentException("Nội dung thông báo trống");
-		}
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		validateMessage(message);
+		User user = findUserById(userId);
 		Notification noti = new Notification(user, message);
 		return notificationRepository.save(noti);
 	}
 
 	@Override
 	public Notification create(Long userId, String message, String type) {
-		if (message == null || message.isBlank()) {
-			throw new IllegalArgumentException("Nội dung thông báo trống");
-		}
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		validateMessage(message);
+		User user = findUserById(userId);
 		Notification noti = new Notification(user, message, type);
 		return notificationRepository.save(noti);
 	}
 
 	@Override
 	public Notification create(Long userId, String message, String type, Long relatedUserId, Long relatedRoomId, String navigationData) {
-		if (message == null || message.isBlank()) {
-			throw new IllegalArgumentException("Nội dung thông báo trống");
-		}
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		validateMessage(message);
+		User user = findUserById(userId);
 		Notification noti = new Notification(user, message, type, relatedUserId, relatedRoomId, navigationData);
 		return notificationRepository.save(noti);
 	}
 
+	private void validateMessage(String message) {
+		if (message == null || message.isBlank()) {
+			throw new IllegalArgumentException("Nội dung thông báo trống");
+		}
+	}
+
 	@Override
 	public void markAllRead(Long userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		User user = findUserById(userId);
 		notificationRepository.findByUser(user).forEach(n -> {
 			n.setRead(true);
 			notificationRepository.save(n);
@@ -89,13 +94,13 @@ public class NotificationServiceImpl implements NotificationService {
 
 	@Override
 	public void clearAll(Long userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		User user = findUserById(userId);
 		notificationRepository.deleteByUser(user);
 	}
 
 	@Override
 	public void deleteReadNotifications(Long userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+		User user = findUserById(userId);
 		notificationRepository.deleteByUserAndIsReadTrue(user);
 	}
 

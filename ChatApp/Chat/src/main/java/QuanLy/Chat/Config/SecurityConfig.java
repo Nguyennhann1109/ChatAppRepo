@@ -1,6 +1,5 @@
 package QuanLy.Chat.Config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,23 +15,18 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @Configuration
 public class SecurityConfig {
 
-    @Autowired
-    private OAuth2SuccessHandler oauth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Tắt CSRF (cho phép gọi API POST/PUT/DELETE từ Postman)
+            .csrf(csrf -> csrf.disable())
             .cors(cors -> {}) // Bật CORS theo cấu hình bên dưới
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/ws/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers("/api/auth/**", "/ws/**").permitAll()
+                .requestMatchers("/api/**").authenticated() // ✅ Yêu cầu authentication cho API
                 .anyRequest().permitAll()
             )
-            .oauth2Login(oauth2 -> oauth2
-                .loginPage("/login")
-                .successHandler(oauth2SuccessHandler)
-                .failureUrl("/login?error=true")
-            );
+            ;
 
         // Đơn giản hóa: dùng session mặc định (STATELESS không cần nữa)
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));

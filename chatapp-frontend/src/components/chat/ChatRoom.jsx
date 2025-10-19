@@ -1,105 +1,74 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { messageApi } from '../../api/messageApi';
 import { roomApi } from '../../api/roomApi';
-import { presenceApi } from '../../api/presenceApi';
-import EmojiPicker from "emoji-picker-react";
-import { Smile, MoreVertical, Edit, Trash2 } from "lucide-react";
-import EditMessageModal from './EditMessageModal';
+import { 
+  HiPaperAirplane, 
+  HiEmojiHappy, 
+  HiPaperClip, 
+  HiDotsVertical,
+  HiCheck,
+  HiCheckCircle,
+  HiEye,
+  HiTrash,
+  HiPencil
+} from 'react-icons/hi';
+import { Button, Avatar, Badge, Dropdown } from 'flowbite-react';
+import { toast } from 'react-hot-toast';
 
-import './ChatRoom.css';
-
-function ChatRoom({ roomId }) {
+const ModernChatRoom = ({ roomId }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [roomInfo, setRoomInfo] = useState(null);
-  const [friendName, setFriendName] = useState(null);
-  const [friendId, setFriendId] = useState(null);
-  const [friendOnlineStatus, setFriendOnlineStatus] = useState(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingMessage, setEditingMessage] = useState(null);
-  const [showMessageMenu, setShowMessageMenu] = useState(null);
-
+  const [friendInfo, setFriendInfo] = useState(null);
+  const [friendOnline, setFriendOnline] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const presencePollRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // 🔹 Load dữ liệu phòng
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
     const loadRoomData = async () => {
+    if (!user?.userId || !roomId) return;
+
+    try {
       setLoading(true);
-      console.log("🔍 Loading room data for roomId:", roomId);
-      console.log("🔍 Room type:", typeof roomId, "Value:", roomId);
-      try {
         const roomData = await roomApi.getById(roomId);
-        console.log("🔍 Room data:", roomData);
-        console.log("🔍 Room ID from API:", roomData?.chatRoomId);
         setRoomInfo(roomData);
 
         const members = await roomApi.getMembers(roomId);
         const friend = members.find((m) => m.userId !== user.userId);
         if (friend) {
-          setFriendId(friend.userId);
-          setFriendName(friend.username);
+        setFriendInfo(friend);
         }
 
         const dataMsg = await messageApi.getByRoom(roomId);
-        // Nếu backend lưu base64 encoded content (workaround), decode trước khi set vào state
-        const decodeBase64 = (b64) => {
-          try {
-            const binary = atob(b64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            return new TextDecoder().decode(bytes);
-          } catch (e) {
-            // Nếu không phải base64 hoặc decode lỗi thì trả về nguyên bản
-            return b64;
-          }
-        };
-
-        const msgs = (dataMsg.content || dataMsg) || [];
+      const msgs = (dataMsg.content || dataMsg) || [];
+      
+      // Decode base64 content if needed
         const decodedMsgs = msgs.map(m => ({
           ...m,
           content: m.content ? decodeBase64(m.content) : m.content
         }));
 
-        console.log("📥 Loaded messages:", decodedMsgs);
-        console.log("📥 Number of messages:", decodedMsgs.length);
-        console.log("📥 First few messages:", decodedMsgs.slice(0, 3));
         setMessages(decodedMsgs);
-        // Lấy trạng thái online ban đầu nếu có friend
-        if (friend) {
-          try {
-            presenceApi.isUserOnline(friend.userId).then((online) => {
-              setFriendOnlineStatus(!!online);
-            }).catch((e) => console.warn('⚠️ error fetching presence:', e));
-          } catch (e) {
-            console.warn('⚠️ error initiating presence fetch:', e);
-          }
-        }
       } catch (err) {
         console.error('❌ Lỗi load dữ liệu phòng:', err);
+      toast.error('Không thể tải tin nhắn');
       } finally {
         setLoading(false);
       }
     };
 
-    if (user?.userId && roomId) loadRoomData();
-  }, [roomId, user?.userId]);
-
-  // 🔹 Tự động cuộn xuống khi có tin nhắn mới
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // 🔹 Nhận tin nhắn qua websocket (bao gồm cả new và updates)
-  const handleWebSocketMessage = useCallback((msg) => {
-    console.log("📨 Nhận tin nhắn từ WebSocket:", msg);
-    // Nếu tin nhắn body được gửi ở dạng base64 thì decode
     const decodeBase64 = (b64) => {
       try {
         const binary = atob(b64);
@@ -111,323 +80,215 @@ function ChatRoom({ roomId }) {
       }
     };
 
-    if (msg.content) {
-      msg = { ...msg, content: decodeBase64(msg.content) };
-    }
-    
-    // Kiểm tra xem đây là tin nhắn mới hay update
-    const existingMessage = messages.find(m => m.messageId === msg.messageId);
-    
-    if (existingMessage) {
-      // Đây là update (edit/delete)
-      console.log("📝 Cập nhật tin nhắn:", msg);
-      setMessages((prev) => 
-        prev.map(m => m.messageId === msg.messageId ? msg : m)
-      );
-    } else {
-      // Đây là tin nhắn mới
-      console.log("📨 Tin nhắn mới:", msg);
-      setMessages((prev) => [...prev, msg]);
-    }
-  }, [messages]);
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !roomId || !user?.userId) return;
 
-  // 🔹 Handle presence updates from websocket
-  const handlePresenceUpdate = useCallback((presence) => {
-    // expected presence shape: { userId, online } or { userId, status }
     try {
-      console.log('🔔 presence event received in ChatRoom:', presence);
-      const uid = presence.userId || presence.id || presence.user || null;
-      const online = (typeof presence.online !== 'undefined') ? presence.online : (presence.status === 'ONLINE' || presence.status === 'online');
-      if (friendId && uid === friendId) {
-        setFriendOnlineStatus(!!online);
-      }
-    } catch (e) {
-      console.warn('⚠️ Could not parse presence update:', presence, e);
+      const message = await messageApi.send(roomId, user.userId, newMessage.trim());
+      setMessages(prev => [...prev, message]);
+      setNewMessage('');
+      inputRef.current?.focus();
+    } catch (error) {
+      console.error('Lỗi gửi tin nhắn:', error);
+      toast.error('Không thể gửi tin nhắn');
     }
-  }, [friendId]);
+  };
 
-  const { connected, sendMessage } = useWebSocket(roomId, handleWebSocketMessage, handlePresenceUpdate, user?.userId);
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
-  // When friendId changes, fetch initial presence and start polling fallback
+  const handleTyping = () => {
+    // Implement typing indicator
+  };
+
+  const onMessage = (message) => {
+    setMessages(prev => [...prev, message]);
+  };
+
+  const onPresenceUpdate = (presence) => {
+    if (friendInfo && presence.userId === friendInfo.userId) {
+      setFriendOnline(presence.online);
+    }
+  };
+
+  useWebSocket(roomId, onMessage, onPresenceUpdate, user?.userId);
+
   useEffect(() => {
-    // clear previous poll
-    if (presencePollRef.current) {
-      clearInterval(presencePollRef.current);
-      presencePollRef.current = null;
-    }
+    loadRoomData();
+  }, [roomId, user?.userId]);
 
-    if (!friendId) return;
-
-    let mounted = true;
-    (async () => {
-      try {
-        const online = await presenceApi.isUserOnline(friendId);
-        if (mounted) {
-          console.log('🔍 initial presence fetch for', friendId, online);
-          setFriendOnlineStatus(!!online);
-        }
-      } catch (e) {
-        console.warn('⚠️ error fetching presence initial:', e);
-      }
-    })();
-
-    // start polling every 5s as fallback
-    presencePollRef.current = setInterval(async () => {
-      try {
-        const online = await presenceApi.isUserOnline(friendId);
-        //console.log('🔁 presence poll', friendId, online);
-        setFriendOnlineStatus(!!online);
-      } catch (e) {
-        console.warn('⚠️ presence poll error:', e);
-      }
-    }, 5000);
-
-    return () => {
-      mounted = false;
-      if (presencePollRef.current) {
-        clearInterval(presencePollRef.current);
-        presencePollRef.current = null;
-      }
-    };
-  }, [friendId]);
-
-  // 🔹 Gửi tin nhắn text
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
-
-    try {
-      console.log("📤 Đang gửi tin nhắn qua API - roomId:", roomId, "userId:", user.userId, "content:", inputMessage.trim());
-      console.log("📤 RoomId type:", typeof roomId, "UserId type:", typeof user.userId);
-      console.log("📤 Current room info:", roomInfo);
-      // Gửi tin nhắn qua HTTP API để lưu vào database
-      const response = await messageApi.send(roomId, user.userId, inputMessage.trim());
-      console.log("📤 Gửi tin nhắn qua API thành công:", response);
-      console.log("📤 Response messageId:", response?.messageId);
-      setInputMessage('');
-    } catch (err) {
-      console.error('❌ Lỗi gửi tin nhắn:', err);
-      console.error('❌ Chi tiết lỗi:', err.response?.data || err.message);
-      console.error('❌ Error status:', err.response?.status);
-    }
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('vi-VN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   };
 
-  // 🔹 Upload file / ảnh
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const uploaded = await messageApi.uploadMedia(roomId, user.userId, file);
-      console.log("✅ Upload thành công:", uploaded.mediaUrl);
-    } catch (err) {
-      console.error("❌ Upload thất bại:", err);
-    } finally {
-      e.target.value = "";
-    }
+  const getMessageStatus = (message) => {
+    if (message.deleted) return 'deleted';
+    if (message.editedAt) return 'edited';
+    return 'sent';
   };
 
-  const triggerFileSelect = () => fileInputRef.current?.click();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
-  // 🔹 Chèn emoji vào input
-  const handleEmojiClick = (emojiData) => {
-    setInputMessage(prev => prev + emojiData.emoji);
-    setShowEmojiPicker(false);
-  };
-
-  // 🔹 Xử lý edit tin nhắn
-  const handleEditMessage = (message) => {
-    setEditingMessage(message);
-    setShowEditModal(true);
-    setShowMessageMenu(null);
-  };
-
-  const handleSaveEdit = async (newContent) => {
-    if (!editingMessage) return;
-    
-    try {
-      await messageApi.edit(editingMessage.messageId, user.userId, newContent);
-      console.log("✅ Sửa tin nhắn thành công");
-    } catch (err) {
-      console.error("❌ Lỗi sửa tin nhắn:", err);
-      alert("Không thể sửa tin nhắn. Vui lòng thử lại.");
-    }
-  };
-
-  // 🔹 Xử lý xóa tin nhắn
-  const handleDeleteMessage = async (message) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa tin nhắn này?")) return;
-    
-    try {
-      await messageApi.softDelete(message.messageId, user.userId);
-      console.log("✅ Xóa tin nhắn thành công");
-    } catch (err) {
-      console.error("❌ Lỗi xóa tin nhắn:", err);
-      alert("Không thể xóa tin nhắn. Vui lòng thử lại.");
-    }
-    setShowMessageMenu(null);
-  };
-
-  // 🔹 Toggle menu context
-  const toggleMessageMenu = (messageId) => {
-    console.log("🖱️ Click menu button for message:", messageId);
-    console.log("🖱️ Current showMessageMenu:", showMessageMenu);
-    const newValue = showMessageMenu === messageId ? null : messageId;
-    console.log("🖱️ Setting showMessageMenu to:", newValue);
-    setShowMessageMenu(newValue);
-  };
-
-  // 🔹 Đóng menu khi click outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.message-menu') && !event.target.closest('.message-menu-button')) {
-        setShowMessageMenu(null);
-      }
-    };
-    
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
-  // 🔹 Render nội dung tin nhắn
-  const renderMessageContent = (msg) => {
-    if (!msg) return null;
-
-    // Hiển thị tin nhắn đã bị xóa
-    if (msg.deleted) {
-      return <p className="deleted-message">Tin nhắn đã bị xóa</p>;
-    }
-
-    const getFileUrl = (url) => url.startsWith('/')
-      ? `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}${url}`
-      : url;
-
-    if (msg.mediaUrl) {
-      const fileUrl = getFileUrl(msg.mediaUrl);
-      const isImage = msg.mediaContentType?.startsWith('image/') ||
-        msg.mediaFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-
-      if (isImage) return <img src={fileUrl} alt="Ảnh gửi" className="chat-image" />;
-      const fileName = msg.mediaFileName || decodeURIComponent(fileUrl.split('/').pop());
-      return <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="chat-file">📎 {fileName}</a>;
-    }
-
-    if (msg.content && msg.content.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return <img src={msg.content} alt="Ảnh" className="chat-image" />;
-    }
-
-    return <p>{msg.content}</p>;
-  };
-
-  if (loading) return <div className="loading">Đang tải tin nhắn...</div>;
+  if (!roomInfo) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-dark-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <HiPaperAirplane className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-gray-500 dark:text-gray-400">Không tìm thấy phòng chat</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="chat-room">
-      {/* Header */}
-      <div className="chat-header">
-        <h3>{roomInfo?.isGroup ? roomInfo.roomName : friendName || `Phòng #${roomId}`}</h3>
-        {friendId && (
-          <span className={`status ${friendOnlineStatus ? 'online' : 'offline'}`}>
-            {friendOnlineStatus ? '🟢 Online' : '🔴 Offline'}
+    <div className="flex flex-col h-full bg-white dark:bg-dark-800">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-700 bg-white dark:bg-dark-800">
+        <div className="flex items-center space-x-3">
+          <Avatar
+            img={friendInfo?.avatarUrl}
+            alt={friendInfo?.username || roomInfo.roomName}
+            size="md"
+            rounded
+          />
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              {friendInfo?.username || roomInfo.roomName}
+            </h3>
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${friendOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {friendOnline ? 'Đang hoạt động' : 'Không hoạt động'}
           </span>
-        )}
+            </div>
+          </div>
+        </div>
+        <Dropdown label="" renderTrigger={() => <Button size="sm" color="gray" variant="ghost"><HiDotsVertical className="w-5 h-5" /></Button>}>
+          <Dropdown.Item icon={HiEye}>Xem thông tin</Dropdown.Item>
+          <Dropdown.Item icon={HiPencil}>Đổi tên phòng</Dropdown.Item>
+          <Dropdown.Item icon={HiTrash} className="text-red-600">Xóa phòng</Dropdown.Item>
+        </Dropdown>
       </div>
 
-      {/* Message List */}
-      <div className="message-list">
-        {messages.map(msg => (
-          <div key={msg.messageId || Math.random()} className={`message ${msg.senderId === user.userId ? 'sent' : 'received'}`}>
-            <div className="message-content">{renderMessageContent(msg)}</div>
-            <div className="message-meta">
-              <div className="message-time">
-                {msg.sentAt && new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                {msg.editedAt && <span className="edited-indicator"> (đã sửa)</span>}
-              </div>
-              {msg.senderId === user.userId && !msg.deleted && (
-                <div className={`message-actions ${showMessageMenu === msg.messageId ? 'show' : ''}`}>
-                  <button 
-                    className="message-menu-button"
-                    onClick={() => toggleMessageMenu(msg.messageId)}
-                    title="Tùy chọn"
-                  >
-                    <MoreVertical size={16} />
-                  </button>
-                  {showMessageMenu === msg.messageId && (
-                    <div className="message-menu">
-                      {console.log("🔍 Rendering menu for message:", msg.messageId)}
-                      <button 
-                        className="menu-item"
-                        onClick={() => handleEditMessage(msg)}
-                      >
-                        <Edit size={14} />
-                        Sửa
-                      </button>
-                      <button 
-                        className="menu-item delete"
-                        onClick={() => handleDeleteMessage(msg)}
-                        style={{ display: 'block' }}
-                      >
-                        <Trash2 size={14} />
-                        Xóa
-                      </button>
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => {
+          const isOwn = message.senderId === user?.userId;
+          const messageStatus = getMessageStatus(message);
+          
+          return (
+            <div
+              key={message.messageId}
+              className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fade-in`}
+            >
+              <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwn ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                {!isOwn && (
+                  <Avatar
+                    img={friendInfo?.avatarUrl}
+                    alt={friendInfo?.username}
+                    size="sm"
+                    rounded
+                  />
+                )}
+                <div className={`
+                  px-4 py-2 rounded-2xl shadow-sm
+                  ${isOwn 
+                    ? 'bg-primary-500 text-white' 
+                    : 'bg-gray-100 dark:bg-dark-700 text-gray-900 dark:text-white'
+                  }
+                `}>
+                  {message.deleted ? (
+                    <p className="text-sm italic opacity-70">Tin nhắn đã bị xóa</p>
+                  ) : (
+                    <>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className={`text-xs ${isOwn ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {formatTime(message.sentAt)}
+                          {message.editedAt && ' (đã sửa)'}
+                        </span>
+                        {isOwn && (
+                          <div className="flex items-center space-x-1">
+                            {messageStatus === 'sent' && <HiCheck className="w-3 h-3" />}
+                            {messageStatus === 'delivered' && <HiCheckCircle className="w-3 h-3" />}
+                            {messageStatus === 'seen' && <HiCheckCircle className="w-3 h-3 text-blue-500" />}
                     </div>
                   )}
                 </div>
+                    </>
               )}
             </div>
           </div>
-        ))}
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <form onSubmit={handleSend} className="message-input">
-        {/* File upload */}
-        <button type="button" onClick={triggerFileSelect} title="Gửi ảnh hoặc file">📎</button>
-        <input
-          type="file"
-          accept="image/*,application/pdf,application/zip,.doc,.docx,.xls,.xlsx"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-
-        {/* Emoji picker */}
-        <button
-          type="button"
-          className="emoji-button"
-          onClick={() => setShowEmojiPicker(prev => !prev)}
-        >
-          <Smile size={22} />
-        </button>
-        {showEmojiPicker && (
-          <div className="emoji-picker">
-            <EmojiPicker onEmojiClick={handleEmojiClick} />
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-2">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            <span>{typingUsers.join(', ')} đang nhập...</span>
+          </div>
           </div>
         )}
 
-        {/* Text input */}
-        <input
-          type="text"
+      {/* Message Input */}
+      <div className="p-4 border-t border-gray-200 dark:border-dark-700 bg-white dark:bg-dark-800">
+        <div className="flex items-end space-x-2">
+          <Button size="sm" color="gray" variant="ghost">
+            <HiPaperClip className="w-5 h-5" />
+          </Button>
+          <div className="flex-1 relative">
+            <textarea
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              onInput={handleTyping}
           placeholder="Nhập tin nhắn..."
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          disabled={!connected}
-        />
-
-        <button type="submit" disabled={!connected || !inputMessage.trim()}>Gửi</button>
-      </form>
-
-      {/* Edit Message Modal */}
-      <EditMessageModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        message={editingMessage}
-        onSave={handleSaveEdit}
-        onCancel={() => setEditingMessage(null)}
-      />
+              className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-2xl resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-dark-700 dark:text-white"
+              rows="1"
+              style={{ minHeight: '40px', maxHeight: '120px' }}
+            />
+          </div>
+          <Button size="sm" color="gray" variant="ghost">
+            <HiEmojiHappy className="w-5 h-5" />
+          </Button>
+          <Button 
+            size="sm" 
+            color="primary" 
+            onClick={sendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <HiPaperAirplane className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
-}
+};
 
-export default ChatRoom;
+export default ModernChatRoom;

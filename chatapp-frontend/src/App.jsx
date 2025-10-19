@@ -3,13 +3,23 @@ import { Toaster } from 'react-hot-toast';
 import { useAuth } from './context/AuthContext';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import ChatLayout from './components/layout/ChatLayout';
+import Layout from './components/layout/Layout';
+import ChatRoom from './components/chat/ChatRoom';
 import FriendsPage from './pages/FriendsPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
-  if (loading) return <div>Đang tải...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" />;
   return children;
 }
@@ -25,7 +35,9 @@ function App() {
           path="/chat"
           element={
             <ProtectedRoute>
-              <ChatLayout />
+              <Layout>
+                <ChatRoom />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -34,7 +46,9 @@ function App() {
           path="/friends"
           element={
             <ProtectedRoute>
-              <FriendsPage />
+              <Layout>
+                <FriendsPage />
+              </Layout>
             </ProtectedRoute>
           }
         />
