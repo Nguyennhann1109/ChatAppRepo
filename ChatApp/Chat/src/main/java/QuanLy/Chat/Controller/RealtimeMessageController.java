@@ -24,6 +24,7 @@ public class RealtimeMessageController {
 	// Client gửi tới /app/rooms/{roomId}/send
     @MessageMapping("/rooms/{roomId}/send")
 	public void sendMessage(@DestinationVariable Long roomId, @Payload MessageDTO payload) {
+		System.out.println("📨 Received WebSocket message for room " + roomId + " from user " + payload.getSenderId());
 		// Lưu tin nhắn qua service, dùng senderId + content từ payload
 		Message saved = messageService.sendMessage(roomId, payload.getSenderId(), payload.getContent());
         // Tạo DTO với đầy đủ fields bao gồm media
@@ -46,6 +47,7 @@ public class RealtimeMessageController {
 		
 		// Phát tới topic phòng: /topic/rooms/{roomId}
 		messagingTemplate.convertAndSend("/topic/rooms/" + roomId, dto);
+		System.out.println("✅ Broadcasted message to /topic/rooms/" + roomId);
 	}
 }
 

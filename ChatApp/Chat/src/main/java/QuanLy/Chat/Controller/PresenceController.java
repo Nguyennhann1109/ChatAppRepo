@@ -20,20 +20,27 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import QuanLy.Chat.DTO.TypingDTO;
+import QuanLy.Chat.Entity.User;
+import QuanLy.Chat.Repository.UserRepository;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/presence")
 public class PresenceController {
 
 	private final SimpMessagingTemplate messagingTemplate;
+	private final UserRepository userRepository;
 
 	private static final Logger logger = LoggerFactory.getLogger(PresenceController.class);
 	private final Set<Long> onlineUsers = ConcurrentHashMap.newKeySet();
 	// Map sessionId -> userId for disconnect handling
 	private final Map<String, Long> sessionUserMap = new ConcurrentHashMap<>();
 
-	public PresenceController(SimpMessagingTemplate messagingTemplate) {
+	public PresenceController(SimpMessagingTemplate messagingTemplate, UserRepository userRepository) {
 		this.messagingTemplate = messagingTemplate;
+		this.userRepository = userRepository;
 	}
 
 	// WS: client gửi /app/typing với body TypingDTO
@@ -59,6 +66,9 @@ public class PresenceController {
 			if (online) onlineUsers.add(userId);
 			else onlineUsers.remove(userId);
 
+			// Update database
+			updateUserOnlineStatus(userId, online);
+
 			// broadcast presence update
 			messagingTemplate.convertAndSend("/topic/presence", Map.of("userId", userId, "online", online));
 		} catch (RuntimeException e) {
@@ -81,7 +91,26 @@ public class PresenceController {
 		Long userId = sessionUserMap.remove(sessionId);
 		if (userId != null) {
 			onlineUsers.remove(userId);
+			updateUserOnlineStatus(userId, false);
 			messagingTemplate.convertAndSend("/topic/presence", Map.of("userId", userId, "online", false));
+		}
+	}
+
+	// Helper method to update user online status in database
+	private void updateUserOnlineStatus(Long userId, boolean online) {
+		try {
+			Optional<User> userOpt = userRepository.findById(userId);
+			if (userOpt.isPresent()) {
+				User user = userOpt.get();
+				user.setIsOnline(online);
+				if (!online) {
+					user.setLastSeen(LocalDateTime.now());
+				}
+				userRepository.save(user);
+				logger.info("✅ Updated user {} online status to: {}", userId, online);
+			}
+		} catch (Exception e) {
+			logger.error("❌ Error updating user online status", e);
 		}
 	}
 }

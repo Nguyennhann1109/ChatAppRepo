@@ -22,7 +22,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Tắt CSRF (cho phép gọi API POST/PUT/DELETE từ Postman)
             .cors(cors -> {}) // Bật CORS theo cấu hình bên dưới
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/ws/**").permitAll()
+                .requestMatchers("/api/auth/**", "/ws/**", "/uploads/**").permitAll()
                 .anyRequest().permitAll()
             )
             // OAuth2 login removed - basic security config

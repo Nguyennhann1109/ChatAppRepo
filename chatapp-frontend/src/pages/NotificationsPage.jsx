@@ -43,11 +43,10 @@ const NotificationsPage = () => {
   const handleMarkRead = async (notificationId) => {
     try {
       await notificationApi.markAsRead(notificationId);
-      // Hiệu ứng mờ dần
+      // Cập nhật state local để notification mờ đi ngay lập tức
       setNotifications(prev => prev.map(n => 
         n.notificationId === notificationId ? { ...n, read: true } : n
       ));
-      setTimeout(() => loadNotifications(), 300);
     } catch (err) {
       toast.error('Không thể đánh dấu đã đọc');
     }
@@ -177,7 +176,10 @@ const NotificationsPage = () => {
                     <Button 
                       size="xs" 
                       color="gray" 
-                      onClick={() => handleMarkRead(n.notificationId)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkRead(n.notificationId);
+                      }}
                       title="Đánh dấu đã đọc"
                     >
                       <HiCheck className="w-4 h-4" />
@@ -186,7 +188,10 @@ const NotificationsPage = () => {
                   <Button 
                     size="xs" 
                     color="failure" 
-                    onClick={() => handleDeleteNotification(n.notificationId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNotification(n.notificationId);
+                    }}
                     title="Xóa"
                   >
                     <HiTrash className="w-4 h-4" />

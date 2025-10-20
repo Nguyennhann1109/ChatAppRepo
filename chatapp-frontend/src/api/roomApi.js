@@ -22,10 +22,12 @@ export const roomApi = {
   },
 
   // Thêm thành viên vào phòng
-  addMember: async (roomId, userId, role = 'member') => {
-    const response = await axiosInstance.post(
-      `/api/rooms/${roomId}/members?userId=${userId}&role=${role}`
-    );
+  addMember: async (roomId, userId, role = 'member', addedBy = null) => {
+    let url = `/api/rooms/${roomId}/members?userId=${userId}&role=${role}`;
+    if (addedBy) {
+      url += `&addedBy=${addedBy}`;
+    }
+    const response = await axiosInstance.post(url);
     return response.data;
   },
 

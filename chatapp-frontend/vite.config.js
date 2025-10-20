@@ -19,6 +19,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true, // 🔥 BẮT BUỘC để hỗ trợ WebSocket
       },
+      '/uploads': {
+        target: 'http://localhost:8080', // ⚙️ Serve static files (images, documents)
+        changeOrigin: true,
+      },
     },
   },
   // Optimize build performance

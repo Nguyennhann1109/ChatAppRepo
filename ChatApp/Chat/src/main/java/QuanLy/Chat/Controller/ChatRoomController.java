@@ -21,9 +21,11 @@ import QuanLy.Chat.Entity.ChatRoomMember;
 import QuanLy.Chat.Entity.Message;
 import QuanLy.Chat.Entity.User;
 import QuanLy.Chat.Service.ChatRoomService;
+import QuanLy.Chat.Service.NotificationService;
 import QuanLy.Chat.DTO.ChatRoomDTO;
 import QuanLy.Chat.DTO.ChatRoomMemberDTO;
 import QuanLy.Chat.Repository.MessageRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -31,10 +33,15 @@ public class ChatRoomController {
 
 	private final ChatRoomService chatRoomService;
 	private final MessageRepository messageRepository;
+	private final NotificationService notificationService;
+	private final SimpMessagingTemplate messagingTemplate;
 
-	public ChatRoomController(ChatRoomService chatRoomService, MessageRepository messageRepository) {
+	public ChatRoomController(ChatRoomService chatRoomService, MessageRepository messageRepository,
+			NotificationService notificationService, SimpMessagingTemplate messagingTemplate) {
 		this.chatRoomService = chatRoomService;
 		this.messageRepository = messageRepository;
+		this.notificationService = notificationService;
+		this.messagingTemplate = messagingTemplate;
 	}
 
 	@PostMapping
@@ -81,21 +88,86 @@ public class ChatRoomController {
 	}
 
 	@PostMapping("/{roomId}/members")
-	public ResponseEntity<ChatRoomMemberDTO> addMember(@PathVariable Long roomId, @RequestParam Long userId, @RequestParam(required = false) String role) {
-		ChatRoomMember member = chatRoomService.addMember(roomId, userId, role);
-		ChatRoomMemberDTO dto = new ChatRoomMemberDTO(
-			member.getUser().getUserId(),
-			member.getUser().getUsername(),
-			member.getUser().getEmail(),
-			member.getRole()
-		);
-		return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+	public ResponseEntity<ChatRoomMemberDTO> addMember(@PathVariable Long roomId, @RequestParam Long userId, 
+			@RequestParam(required = false) String role, @RequestParam(required = false) Long addedBy) {
+		System.out.println("📥 addMember called: roomId=" + roomId + ", userId=" + userId + ", role=" + role + ", addedBy=" + addedBy);
+		
+		try {
+			ChatRoomMember member = chatRoomService.addMember(roomId, userId, role);
+			System.out.println("✅ Member added to database");
+			
+			ChatRoom room = chatRoomService.getRoom(roomId);
+			System.out.println("✅ Got room: " + room.getRoomName());
+			
+			// LUÔN broadcast trước, để đảm bảo user nhận được update
+			try {
+				// Broadcast cho user được thêm vào
+				messagingTemplate.convertAndSend("/topic/user/" + userId + "/rooms", "refresh");
+				System.out.println("✅ Broadcasted room update to user " + userId + " (added user)");
+				
+				// Nếu có addedBy, cũng broadcast cho người thêm để họ thấy member list update
+				if (addedBy != null && !addedBy.equals(userId)) {
+					messagingTemplate.convertAndSend("/topic/user/" + addedBy + "/rooms", "refresh");
+					System.out.println("✅ Broadcasted room update to user " + addedBy + " (adder)");
+				}
+			} catch (Exception wsError) {
+				System.err.println("❌ Error broadcasting: " + wsError.getMessage());
+				wsError.printStackTrace();
+			}
+			
+			// Sau đó mới tạo notification (không quan trọng bằng broadcast)
+			boolean isSelfAdding = (addedBy != null && addedBy.equals(userId));
+			
+			if (!isSelfAdding) {
+				try {
+					String message = "Bạn đã được thêm vào nhóm: " + room.getRoomName();
+					notificationService.create(userId, message);
+					System.out.println("✅ Created notification for user " + userId);
+				} catch (Exception notifError) {
+					System.err.println("❌ Error creating notification: " + notifError.getMessage());
+					notifError.printStackTrace();
+				}
+			} else {
+				System.out.println("ℹ️ Skipping notification - user is adding themselves");
+			}
+			
+			ChatRoomMemberDTO dto = new ChatRoomMemberDTO(
+				member.getUser().getUserId(),
+				member.getUser().getUsername(),
+				member.getUser().getEmail(),
+				member.getRole()
+			);
+			System.out.println("✅ Returning success response");
+			return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+		} catch (Exception e) {
+			System.err.println("❌ Error in addMember: " + e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+		}
 	}
 
 	@DeleteMapping("/{roomId}/members/{userId}")
 	public ResponseEntity<Void> removeMember(@PathVariable Long roomId, @PathVariable Long userId) {
-		chatRoomService.removeMember(roomId, userId);
-		return ResponseEntity.noContent().build();
+		try {
+			ChatRoom room = chatRoomService.getRoom(roomId);
+			
+			// Tạo notification cho user bị xóa
+			try {
+				String message = "Bạn đã bị xóa khỏi nhóm: " + room.getRoomName();
+				notificationService.create(userId, message);
+				
+				// Broadcast qua WebSocket
+				messagingTemplate.convertAndSend("/topic/user/" + userId + "/rooms", "refresh");
+			} catch (Exception notifError) {
+				System.err.println("Error sending notification: " + notifError.getMessage());
+			}
+			
+			chatRoomService.removeMember(roomId, userId);
+			return ResponseEntity.noContent().build();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 
 	@GetMapping("/{roomId}/members")

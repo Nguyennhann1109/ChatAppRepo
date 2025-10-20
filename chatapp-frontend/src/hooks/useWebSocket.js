@@ -130,11 +130,17 @@ export const useWebSocket = (roomId, onMessage, onPresenceUpdate, currentUserId)
 
     // Subscribe to new room if provided
     if (roomId) {
+      console.log(`🔔 Subscribing to room ${roomId}`);
       try {
         roomSubRef.current = client.subscribe(`/topic/rooms/${roomId}`, (message) => {
           const msg = JSON.parse(message.body);
+          console.log(`📨 Received message in room ${roomId}:`, msg);
           // New message received (room change)
-          if (onMessageRef.current) onMessageRef.current(msg);
+          if (onMessageRef.current) {
+            onMessageRef.current(msg);
+          } else {
+            console.warn('⚠️ onMessageRef.current is null');
+          }
         });
 
         typingSubRef.current = client.subscribe(`/topic/rooms/${roomId}/typing`, (message) => {

@@ -24,22 +24,39 @@ const CreateGroupModal = ({ show, onClose, userId, onGroupCreated }) => {
 
     try {
       setCreatingGroup(true);
-      const newRoom = await roomApi.createRoom(groupName.trim(), true);
+      const newRoom = await roomApi.create(groupName.trim(), true);
       
-      // Thêm user hiện tại vào nhóm
-      await roomApi.addMember(newRoom.chatRoomId, userId, 'admin');
+      // Thêm user hiện tại vào nhóm (tự add, không cần notification)
+      await roomApi.addMember(newRoom.chatRoomId, userId, 'admin', userId);
       
       toast.success('Đã tạo nhóm thành công!');
       setGroupName('');
-      onClose();
       
-      // Callback để parent component xử lý
-      if (onGroupCreated) {
-        onGroupCreated(newRoom.chatRoomId);
+      // Callback để parent component xử lý TRƯỚC khi đóng modal
+      try {
+        if (onGroupCreated) {
+          await onGroupCreated(newRoom.chatRoomId);
+        }
+      } catch (callbackError) {
+        console.error('Error in onGroupCreated callback:', callbackError);
+        // Vẫn đóng modal ngay cả khi callback lỗi
       }
+      
+      onClose();
     } catch (error) {
       console.error('Lỗi tạo nhóm:', error);
-      toast.error('Không thể tạo nhóm. Vui lòng thử lại!');
+      // Xử lý error message từ backend
+      let errorMsg = 'Không thể tạo nhóm';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMsg = error.response.data;
+        } else if (error.response.data.message) {
+          errorMsg = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      toast.error(errorMsg);
     } finally {
       setCreatingGroup(false);
     }

@@ -11,7 +11,6 @@ import {
   HiDotsVertical,
   HiCheck,
   HiCheckCircle,
-  HiEye,
   HiTrash,
   HiPencil,
   HiUserGroup,
@@ -19,6 +18,7 @@ import {
 } from 'react-icons/hi';
 import { Button, Avatar, Badge, Dropdown } from 'flowbite-react';
 import { toast } from 'react-hot-toast';
+import AddMemberModal from './AddMemberModal';
 
 const ModernChatRoom = ({ roomId }) => {
   const { user } = useAuth();
@@ -31,10 +31,10 @@ const ModernChatRoom = ({ roomId }) => {
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [friendOnline, setFriendOnline] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState(roomId || searchParams.get('roomId'));
   const [roomInfo, setRoomInfo] = useState(null);
   const [friendInfo, setFriendInfo] = useState(null);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,8 +89,6 @@ const ModernChatRoom = ({ roomId }) => {
         if (friendId) {
           const friendData = roomData.members.find(m => m.userId === friendId);
           setFriendInfo(friendData);
-          // Set initial online status (giả sử offline, sẽ được update qua WebSocket)
-          setFriendOnline(false);
           console.log('👤 Loaded friend info:', friendData);
         }
       }
@@ -102,17 +100,35 @@ const ModernChatRoom = ({ roomId }) => {
     }
   };
 
-  const sendMessage = async () => {
+  const sendMessage = () => {
     if (!newMessage.trim() || !currentRoomId || !user?.userId) return;
 
-    try {
-      await messageApi.send(currentRoomId, user.userId, newMessage.trim());
-      // Không add vào state ngay, chờ WebSocket broadcast
+    console.log('📤 Sending message:', {
+      connected,
+      hasSendMessageWS: !!sendMessageWS,
+      roomId: currentRoomId,
+      userId: user.userId,
+      content: newMessage.trim()
+    });
+
+    if (connected && sendMessageWS) {
+      // Gửi qua WebSocket cho realtime
+      console.log('✅ Using WebSocket');
+      sendMessageWS(user.userId, newMessage.trim());
       setNewMessage('');
       inputRef.current?.focus();
-    } catch (error) {
-      console.error('Lỗi gửi tin nhắn:', error);
-      toast.error('Không thể gửi tin nhắn');
+    } else {
+      // Fallback: gửi qua REST API nếu WebSocket chưa kết nối
+      console.warn('⚠️ WebSocket not connected, using REST API');
+      messageApi.send(currentRoomId, user.userId, newMessage.trim())
+        .then(() => {
+          setNewMessage('');
+          inputRef.current?.focus();
+        })
+        .catch(error => {
+          console.error('Lỗi gửi tin nhắn:', error);
+          toast.error('Không thể gửi tin nhắn');
+        });
     }
   };
 
@@ -217,10 +233,6 @@ const ModernChatRoom = ({ roomId }) => {
     }
   };
 
-  const handleViewInfo = () => {
-    toast.info('Tính năng xem thông tin phòng đang phát triển');
-  };
-
   const onMessage = (message) => {
     setMessages(prev => {
       // Kiểm tra xem message đã tồn tại chưa (dựa vào messageId)
@@ -235,14 +247,29 @@ const ModernChatRoom = ({ roomId }) => {
   };
 
   const onPresenceUpdate = (presence) => {
-    console.log('👤 Presence update:', presence, 'friendInfo:', friendInfo);
-    if (friendInfo && presence.userId === friendInfo.userId) {
-      console.log('✅ Updating friend online status:', presence.online);
-      setFriendOnline(presence.online);
-    }
+    // Presence updates are handled by ConversationList for the sidebar
+    // No need to update here since we don't display online status in chat header
   };
 
-  useWebSocket(currentRoomId, onMessage, onPresenceUpdate, user?.userId);
+  const { sendMessage: sendMessageWS, connected } = useWebSocket(currentRoomId, onMessage, onPresenceUpdate, user?.userId);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 ChatRoom WebSocket state:', {
+      currentRoomId: currentRoomId,
+      connected: connected,
+      hasOnMessage: !!onMessage,
+      hasSendMessageWS: !!sendMessageWS,
+      userId: user?.userId
+    });
+    
+    if (!currentRoomId) {
+      console.warn('⚠️ No currentRoomId - cannot subscribe to room');
+    }
+    if (!connected) {
+      console.warn('⚠️ WebSocket not connected');
+    }
+  }, [currentRoomId, connected, sendMessageWS, user?.userId]);
 
   useEffect(() => {
     if (currentRoomId && user?.userId) {
@@ -357,16 +384,15 @@ const ModernChatRoom = ({ roomId }) => {
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {friendInfo?.username || roomInfo.roomName}
             </h3>
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${friendOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {friendOnline ? 'Đang hoạt động' : 'Không hoạt động'}
-          </span>
-            </div>
           </div>
         </div>
         <Dropdown label="" renderTrigger={() => <Button size="sm" color="gray" variant="ghost"><HiDotsVertical className="w-5 h-5" /></Button>}>
-          <Dropdown.Item icon={HiEye} onClick={handleViewInfo}>Xem thông tin</Dropdown.Item>
+          {roomInfo?.isGroup && (
+            <Dropdown.Item icon={HiUserGroup} onClick={() => {
+              console.log('🔵 Opening AddMemberModal for room', currentRoomId);
+              setShowAddMemberModal(true);
+            }}>Thêm thành viên</Dropdown.Item>
+          )}
           <Dropdown.Item icon={HiPencil} onClick={handleRenameRoom}>Đổi tên phòng</Dropdown.Item>
           <Dropdown.Item icon={HiTrash} className="text-red-600" onClick={handleDeleteRoom}>Xóa phòng</Dropdown.Item>
         </Dropdown>
@@ -377,16 +403,6 @@ const ModernChatRoom = ({ roomId }) => {
         {messages.map((message) => {
           const isOwn = message.senderId === user?.userId;
           const messageStatus = getMessageStatus(message);
-          
-          // Debug log cho tất cả messages
-          console.log('💬 Message:', {
-            messageId: message.messageId,
-            hasMediaUrl: !!message.mediaUrl,
-            mediaUrl: message.mediaUrl,
-            mediaContentType: message.mediaContentType,
-            mediaFileName: message.mediaFileName,
-            contentPreview: message.content?.substring(0, 30)
-          });
           
           return (
             <div
@@ -417,10 +433,14 @@ const ModernChatRoom = ({ roomId }) => {
                         {/* Hiển thị file/ảnh */}
                         {message.mediaContentType?.startsWith('image/') ? (
                           <img 
-                            src={`http://localhost:8080${message.mediaUrl}`} 
+                            src={message.mediaUrl} 
                             alt={message.mediaFileName}
                             className="max-w-xs rounded-lg cursor-pointer"
-                            onClick={() => window.open(`http://localhost:8080${message.mediaUrl}`, '_blank')}
+                            onClick={() => {
+                              // Khi mở tab mới, dùng URL backend trực tiếp vì Vite proxy không hoạt động
+                              const backendUrl = `http://localhost:8080${message.mediaUrl}`;
+                              window.open(backendUrl, '_blank');
+                            }}
                           />
                         ) : (
                           <a 
@@ -566,6 +586,17 @@ const ModernChatRoom = ({ roomId }) => {
           </Button>
         </div>
       </div>
+
+      {/* Add Member Modal */}
+      <AddMemberModal
+        show={showAddMemberModal}
+        onClose={() => {
+          setShowAddMemberModal(false);
+          loadRoomData(); // Reload để cập nhật danh sách members
+        }}
+        roomId={currentRoomId}
+        currentMembers={roomInfo?.members || []}
+      />
     </div>
   );
 };

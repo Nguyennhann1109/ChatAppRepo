@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { roomApi } from '../../api/roomApi';
 import { useAuth } from '../../context/AuthContext';
-import { Avatar, Badge, Button } from 'flowbite-react';
-import { HiUserGroup, HiSearch, HiPlus } from 'react-icons/hi';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { roomApi } from '../../api/roomApi';
+import { useNavigate } from 'react-router-dom';
+import { HiPlus, HiSearch, HiUserGroup } from 'react-icons/hi';
+import { Button, Avatar, Badge } from 'flowbite-react';
 import { toast } from 'react-hot-toast';
 import CreateGroupModal from './CreateGroupModal';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 const ConversationList = ({ onSelectRoom, selectedRoomId }) => {
   const { user } = useAuth();
@@ -17,6 +20,35 @@ const ConversationList = ({ onSelectRoom, selectedRoomId }) => {
 
   useEffect(() => {
     loadConversations();
+  }, [user?.userId]);
+
+  // Subscribe to room updates for current user
+  useEffect(() => {
+    if (!user?.userId) return;
+
+    const socket = new SockJS('/ws');
+    const client = new Client({
+      webSocketFactory: () => socket,
+      onConnect: () => {
+        console.log('✅ Room updates WebSocket connected');
+        // Subscribe to personal room updates
+        console.log(`✅ Subscribed to /topic/user/${user.userId}/rooms`);
+        client.subscribe(`/topic/user/${user.userId}/rooms`, (message) => {
+          console.log('🔔 Room update received for user', user.userId, ':', message.body);
+          // Reload conversations when room list changes
+          loadConversations();
+        });
+      },
+      onStompError: (frame) => {
+        console.error('❌ STOMP error:', frame);
+      }
+    });
+
+    client.activate();
+
+    return () => {
+      client.deactivate();
+    };
   }, [user?.userId]);
 
   // Handle presence updates
@@ -57,20 +89,22 @@ const ConversationList = ({ onSelectRoom, selectedRoomId }) => {
         return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
       });
       
-      setConversations(sortedRooms);
+      setConversations(sortedRooms || []);
       
       // Load initial online status từ backend
       const initialOnlineUsers = new Set();
-      sortedRooms.forEach(room => {
-        if (!room.isGroup && room.otherUserId && room.otherUserOnline) {
-          initialOnlineUsers.add(room.otherUserId);
-        }
-      });
+      if (sortedRooms && Array.isArray(sortedRooms)) {
+        sortedRooms.forEach(room => {
+          if (!room.isGroup && room.otherUserId && room.otherUserOnline) {
+            initialOnlineUsers.add(room.otherUserId);
+          }
+        });
+      }
       setOnlineUsers(initialOnlineUsers);
       console.log('🟢 Initial online users:', Array.from(initialOnlineUsers));
       
       // Tự động chọn phòng đầu tiên nếu chưa có phòng nào được chọn
-      if (!selectedRoomId && sortedRooms.length > 0) {
+      if (!selectedRoomId && sortedRooms && sortedRooms.length > 0 && onSelectRoom) {
         onSelectRoom(sortedRooms[0].chatRoomId);
       }
     } catch (error) {
@@ -115,15 +149,23 @@ const ConversationList = ({ onSelectRoom, selectedRoomId }) => {
   };
 
   const handleGroupCreated = async (newRoomId) => {
-    // Reload danh sách và chọn nhóm mới
-    await loadConversations();
-    onSelectRoom(newRoomId);
+    try {
+      // Reload danh sách và chọn nhóm mới
+      await loadConversations();
+      if (newRoomId && onSelectRoom) {
+        onSelectRoom(newRoomId);
+      }
+    } catch (error) {
+      console.error('Error after group created:', error);
+      toast.error('Không thể tải lại danh sách phòng');
+    }
   };
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = (conversations || []).filter(conv => {
+    if (!conv) return false;
     const searchLower = searchQuery.toLowerCase();
     if (conv.isGroup) {
-      return conv.roomName.toLowerCase().includes(searchLower);
+      return conv.roomName?.toLowerCase().includes(searchLower);
     } else {
       return (conv.otherUsername?.toLowerCase().includes(searchLower) ||
               conv.otherDisplayName?.toLowerCase().includes(searchLower));

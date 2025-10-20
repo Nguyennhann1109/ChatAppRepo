@@ -3,6 +3,46 @@ import { useSearchParams } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ModernChatRoom from './ChatRoom';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ChatRoom Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center p-8">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Đã xảy ra lỗi
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Không thể tải phòng chat. Vui lòng thử lại.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Tải lại trang
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const ChatLayout = () => {
   const [searchParams] = useSearchParams();
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -28,7 +68,9 @@ const ChatLayout = () => {
       {/* Main Chat Area */}
       <div className="flex-1">
         {selectedRoomId ? (
-          <ModernChatRoom roomId={selectedRoomId} key={selectedRoomId} />
+          <ErrorBoundary key={selectedRoomId}>
+            <ModernChatRoom roomId={selectedRoomId} key={selectedRoomId} />
+          </ErrorBoundary>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
